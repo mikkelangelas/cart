@@ -6,6 +6,8 @@ add_executable(cart
     src/main.c
 )
 
+set_target_properties(cart PROPERTIES C_STANDARD 99)
+
 find_package(SDL3 REQUIRED CONFIG)
 
 if (NOT ${SDL3_FOUND})

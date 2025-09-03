@@ -8,23 +8,37 @@
 // because it is encoded in opcodes as if it was one.
 // Keep in mind that 'r8' in function names also refers to [hl]
 typedef enum Reg8 {
-    B = 0,
-    C = 1,
-    D = 2,
-    E = 3,
-    H = 4,
-    L = 5,
-    HLMEM = 6,
-    A = 7
+    REG8_B = 0,
+    REG8_C = 1,
+    REG8_D = 2,
+    REG8_E = 3,
+    REG8_H = 4,
+    REG8_L = 5,
+    REG8_HLMEM = 6,
+    REG8_A = 7
 } Reg8;
 
 typedef enum Reg16 {
-    AF,
-    BC,
-    DE,
-    HL,
-    SP
+    REG16_BC = 0,
+    REG16_DE = 1,
+    REG16_HL = 2,
+    REG16_SP = 3,
+    REG16_AF = 4
 } Reg16;
+
+typedef enum Condition {
+    COND_NZ = 0,
+    COND_Z = 1,
+    COND_NC = 2,
+    COND_C = 3
+} Condition;
+
+typedef enum Flag {
+    FLAG_Z = 7,
+    FLAG_N = 6,
+    FLAG_H = 5,
+    FLAG_C = 4
+} Flag;
 
 typedef struct CPU {
     uint8_t a;
@@ -40,6 +54,8 @@ typedef struct CPU {
     uint16_t sp;
 
     uint8_t ime;
+
+    struct Gameboy *gameboy;
 } CPU;
 
 void cpu_init(CPU *cpu);
@@ -49,26 +65,34 @@ uint8_t cpu_step(CPU *cpu);
 uint8_t cpu_execute(CPU *cpu, uint8_t opcode);
 uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode);
 
+// helper functions
+
 uint8_t read_r8(CPU *cpu, Reg8 reg);
 uint16_t read_r16(CPU *cpu, Reg16 reg);
 
-void write_r8(CPU *cpu, Reg8 reg);
-void write_r16(CPU *cpu, Reg16 reg);
+void write_r8(CPU *cpu, Reg8 reg, uint8_t val);
+void write_r16(CPU *cpu, Reg16 reg, uint16_t val);
 
-void nop(CPU *cpu);
+void clear_flags(CPU *cpu);
+uint8_t get_flag(CPU *cpu, Flag flag);
+void set_flag(CPU *cpu, Flag flag, uint8_t val);
+
+uint8_t evaluate_condition(CPU *cpu, Condition cond);
+
+// load instructions
 
 void ld_r8_r8(CPU *cpu, Reg8 dest, Reg8 src);
 void ld_r8_n8(CPU *cpu, Reg8 dest, uint8_t val);
 void ld_r16_n16(CPU *cpu, Reg16 dest, uint16_t val);
 
 void ld_r16mem_a(CPU *cpu, Reg16 dest);
-void ld_n16mem_a(CPU *cpu, uint16_t dest);
+void ld_a16_a(CPU *cpu, uint16_t dest);
 void ld_a_r16mem(CPU *cpu, Reg16 src);
-void ld_a_n16mem(CPU *cpu, uint16_t src);
+void ld_a_a16(CPU *cpu, uint16_t src);
 
-void ldh_n8mem_a(CPU *cpu, uint8_t dest);
+void ldh_a8_a(CPU *cpu, uint8_t dest);
 void ldh_cmem_a(CPU *cpu);
-void ldh_a_n8mem(CPU *cpu, uint8_t src);
+void ldh_a_a8(CPU *cpu, uint8_t src);
 void ldh_a_cmem(CPU *cpu);
 
 void ldi_hlmem_a(CPU *cpu);
@@ -77,11 +101,11 @@ void ldi_a_hlmem(CPU *cpu);
 void ldd_a_hlmem(CPU *cpu);
 
 void ld_sp_n16(CPU *cpu, uint16_t val);
-void ld_n16mem_sp(CPU *cpu, uint16_t dest);
+void ld_a16_sp(CPU *cpu, uint16_t dest);
 void ld_hl_sp_e8(CPU *cpu, uint8_t val);
 void ld_sp_hl(CPU *cpu);
 
-// arithmetic operations
+// arithmetic instructions
 
 void add_sp_e8(CPU *cpu, uint8_t val);
 
@@ -111,7 +135,7 @@ void inc_r16(CPU *cpu, Reg16 reg);
 void cp_a_r8(CPU *cpu, Reg8 reg);
 void cp_a_n8(CPU *cpu, uint8_t val);
 
-// bitwise logic
+// bitwise instructions
 
 void and_a_r8(CPU *cpu, Reg8 reg);
 void and_a_n8(CPU *cpu, uint8_t val);
@@ -122,7 +146,50 @@ void or_a_n8(CPU *cpu, uint8_t val);
 void xor_a_r8(CPU *cpu, Reg8 reg);
 void xor_a_n8(CPU *cpu, uint8_t val);
 
-// prefixed operations
+void rlca(CPU *cpu);
+void rla(CPU *cpu);
+
+void rrca(CPU *cpu);
+void rra(CPU *cpu);
+
+// carry instructions
+
+void ccf(CPU *cpu);
+void scf(CPU *cpu);
+
+// interrupt-related instructions
+
+void di(CPU *cpu);
+void ei(CPU *cpu);
+
+void halt(CPU *cpu);
+void stop(CPU *cpu);
+
+// jumps, calls and returns
+
+void jr_e8(CPU *cpu, uint8_t val);
+uint8_t jr_cond_e8(CPU *cpu, Condition cond, uint8_t val);
+
+void jp_hl(CPU *cpu);
+void jp_a16(CPU *cpu, uint16_t addr);
+uint8_t jp_cond_a16(CPU *cpu, Condition cond, uint16_t addr);
+
+void call_a16(CPU *cpu, uint16_t addr);
+uint8_t call_cond_a16(CPU *cpu, Condition cond, uint16_t addr);
+
+void ret(CPU *cpu);
+void ret_cond(CPU *cpu, Condition cond);
+void reti(CPU *cpu);
+
+void rst_vec(CPU *cpu, uint8_t vec);
+
+// misc instructions
+
+void nop(CPU *cpu);
+
+void daa(CPU *cpu);
+
+// prefixed instructions
 
 void rlc_r8(CPU *cpu, Reg8 reg);
 
