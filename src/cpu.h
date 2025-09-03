@@ -163,7 +163,7 @@ void di(CPU *cpu);
 void ei(CPU *cpu);
 
 void halt(CPU *cpu);
-void stop(CPU *cpu);
+void stop(CPU *cpu, uint8_t val);
 
 // jumps, calls and returns
 
