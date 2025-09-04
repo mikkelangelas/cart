@@ -54,6 +54,7 @@ typedef struct CPU {
     uint16_t sp;
 
     uint8_t ime;
+    uint8_t halted;
 
     struct Gameboy *gameboy;
 } CPU;
@@ -73,11 +74,8 @@ uint16_t read_r16(CPU *cpu, Reg16 reg);
 void write_r8(CPU *cpu, Reg8 reg, uint8_t val);
 void write_r16(CPU *cpu, Reg16 reg, uint16_t val);
 
-void clear_flags(CPU *cpu);
-uint8_t get_flag(CPU *cpu, Flag flag);
-void set_flag(CPU *cpu, Flag flag, uint8_t val);
-
-uint8_t evaluate_condition(CPU *cpu, Condition cond);
+void push_stack(CPU *cpu, uint16_t val);
+uint16_t pop_stack(CPU *cpu);
 
 // load instructions
 
@@ -132,9 +130,6 @@ void inc_r8(CPU *cpu, Reg8 reg);
 void dec_r16(CPU *cpu, Reg16 reg);
 void inc_r16(CPU *cpu, Reg16 reg);
 
-void cp_a_r8(CPU *cpu, Reg8 reg);
-void cp_a_n8(CPU *cpu, uint8_t val);
-
 // bitwise instructions
 
 void and_a_r8(CPU *cpu, Reg8 reg);
@@ -165,7 +160,7 @@ void ei(CPU *cpu);
 void halt(CPU *cpu);
 void stop(CPU *cpu, uint8_t val);
 
-// jumps, calls and returns
+// jump, call and return instructions
 
 void jr_e8(CPU *cpu, uint8_t val);
 uint8_t jr_cond_e8(CPU *cpu, Condition cond, uint8_t val);
@@ -178,7 +173,7 @@ void call_a16(CPU *cpu, uint16_t addr);
 uint8_t call_cond_a16(CPU *cpu, Condition cond, uint16_t addr);
 
 void ret(CPU *cpu);
-void ret_cond(CPU *cpu, Condition cond);
+uint8_t ret_cond(CPU *cpu, Condition cond);
 void reti(CPU *cpu);
 
 void rst_vec(CPU *cpu, uint8_t vec);

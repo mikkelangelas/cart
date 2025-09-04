@@ -2,7 +2,7 @@
 
 #include "gameboy.h"
 
-uint8_t read_byte(MMU *mmu, uint16_t addr) {
+uint8_t mmu_read(MMU *mmu, uint16_t addr) {
     uint8_t val = 0xFF;
 
     if (0x0000 <= addr && addr <= 0x7FFF) {
@@ -26,11 +26,7 @@ uint8_t read_byte(MMU *mmu, uint16_t addr) {
     return val;
 }
 
-uint16_t read_word(MMU *mmu, uint16_t addr) {
-    return ((uint16_t)read_byte(mmu, addr + 1) << 8) | (uint16_t)read_byte(mmu, addr);
-}
-
-void write_byte(MMU *mmu, uint16_t addr, uint8_t val) {
+void mmu_write(MMU *mmu, uint16_t addr, uint8_t val) {
     if (0x0000 <= addr && addr <= 0x7FFF) {
         // cartridge ROM 
     }
@@ -44,9 +40,4 @@ void write_byte(MMU *mmu, uint16_t addr, uint8_t val) {
     else if (0xFF00 <= addr && addr <= 0xFF7F) mmu->gameboy->io_registers[addr - 0xFF00] = val;
     else if (0xFF80 <= addr && addr <= 0xFFFE) mmu->gameboy->hram[addr - 0xFF90] = val;
     else if (addr == 0xFFFF) mmu->gameboy->ie = val;
-}
-
-void write_word(MMU *mmu, uint16_t addr, uint16_t val) {
-    write_byte(mmu, addr, (uint8_t)val);
-    write_byte(mmu, addr + 1, (uint8_t)(val >> 8));
 }

@@ -2,6 +2,59 @@
 
 #include "gameboy.h"
 #include "mmu.h"
+#include <stdint.h>
+
+// --------------------------
+//      helper functions
+// --------------------------
+
+static inline uint8_t get_flag(CPU *cpu, Flag flag) {
+    return (cpu->f >> flag) & 0x01;
+}
+
+// TODO -> sould these 2 be inline as well?
+static void set_flags_addition(CPU *cpu, uint8_t op1, uint8_t op2) {
+    uint8_t new_flags = 0x00;
+
+    new_flags |= (op1 + op2 == 0x00) << FLAG_Z;
+    new_flags |= ((op1 & 0x0F) + (op2 & 0x0F) > 0x0F) << FLAG_H;
+    new_flags |= ((uint16_t)op1 + (uint16_t)op2 > 0x00FF) << FLAG_C;
+
+    cpu->f = new_flags;
+}
+
+static void set_flags_subtraction(CPU *cpu, uint8_t op1, uint8_t op2) {
+    uint8_t new_flags = 0x40;
+
+    new_flags |= (op1 - op2 == 0x00) << FLAG_Z;
+    new_flags |= ((op2 & 0x0F) > (op1 & 0x0F)) << FLAG_H;
+    new_flags |= (op2 > op1) << FLAG_C;
+
+    cpu->f = new_flags;
+}
+
+static inline void set_flags_and(CPU *cpu, uint8_t res) {
+    cpu->f = 0x02 | ((res == 0x00) << FLAG_Z);
+}
+
+static inline void set_flags_or_xor(CPU *cpu, uint8_t res) {
+    cpu->f = 0x00 | ((res == 0x00) << FLAG_Z);
+}
+
+static inline void set_flags_roll_a(CPU *cpu, uint8_t carry) {
+    cpu->f = 0x00 | (carry << FLAG_C);
+}
+
+static inline void set_flags_roll_shift(CPU *cpu, uint8_t carry, uint8_t res) {
+    cpu->f = (carry << FLAG_C) | ((res == 0x00) << FLAG_Z);
+}
+
+static inline uint8_t evaluate_condition(CPU *cpu, Condition cond) {
+    // thats how the condition can be checked directly from the opcode
+    return get_flag(cpu, 7 - (3 * (cond >> 1))) == (cond & 0x01);
+}
+
+
 
 uint8_t read_r8(CPU *cpu, Reg8 reg) {
     uint8_t val = 0x00;
@@ -13,7 +66,7 @@ uint8_t read_r8(CPU *cpu, Reg8 reg) {
         case REG8_E: val = cpu->e; break;
         case REG8_H: val = cpu->h; break;
         case REG8_L: val = cpu->l; break;
-        case REG8_HLMEM: val = read_byte(&cpu->gameboy->mmu, read_r16(cpu, REG16_HL)); break;
+        case REG8_HLMEM: val = mmu_read(&cpu->gameboy->mmu, read_r16(cpu, REG16_HL)); break;
         case REG8_A: val = cpu->a; break;
     }
 
@@ -55,7 +108,7 @@ void write_r8(CPU *cpu, Reg8 reg, uint8_t val) {
         case REG8_E: cpu->e = val; break;
         case REG8_H: cpu->h = val; break;
         case REG8_L: cpu->l = val; break;
-        case REG8_HLMEM: write_byte(&cpu->gameboy->mmu, read_r16(cpu, REG16_HL), val); break;
+        case REG8_HLMEM: mmu_write(&cpu->gameboy->mmu, read_r16(cpu, REG16_HL), val); break;
         case REG8_A: cpu->a = val; break;
     }
 }
@@ -85,25 +138,25 @@ void write_r16(CPU *cpu, Reg16 reg, uint16_t val) {
     }
 }
 
-void clear_flags(CPU *cpu) {
-    cpu->f = 0x00;
+void push_stack(CPU *cpu, uint16_t val) {
+    mmu_write(&cpu->gameboy->mmu, --cpu->sp, (uint8_t)(val >> 8));
+    mmu_write(&cpu->gameboy->mmu, --cpu->sp, (uint8_t)val);
 }
 
-uint8_t get_flag(CPU *cpu, Flag flag) {
-    return (cpu->f >> flag) & 0x01;
-}
+uint16_t pop_stack(CPU *cpu) {
+    uint16_t val = 0x0000;
 
-void set_flag(CPU *cpu, Flag flag, uint8_t val) {
-    if (val == 0) cpu->f &= ~(0x01 << flag);
-    else cpu->f |= 0x01 << flag;
-}
+    val |= mmu_read(&cpu->gameboy->mmu, cpu->sp++);
+    val |= mmu_read(&cpu->gameboy->mmu, cpu->sp++) << 8;
 
-uint8_t evaluate_condition(CPU *cpu, Condition cond) {
-    // thats how the condition can be checked directly from the opcode
-    return get_flag(cpu, 7 - (3 * (cond >> 1))) == (cond & 0x01);
+    return val;
 }
 
 
+
+// ---------------------------
+//      load instructions
+// ---------------------------
 
 void ld_r8_r8(CPU *cpu, Reg8 dest, Reg8 src) {
     write_r8(cpu, dest, read_r8(cpu, src));
@@ -118,41 +171,41 @@ void ld_r16_n16(CPU *cpu, Reg16 dest, uint16_t val) {
 }
 
 void ld_r16mem_a(CPU *cpu, Reg16 dest) {
-    write_byte(&cpu->gameboy->mmu, read_r16(cpu, dest), cpu->a);
+    mmu_write(&cpu->gameboy->mmu, read_r16(cpu, dest), cpu->a);
 }
 
 void ld_a16_a(CPU *cpu, uint16_t dest) {
-    write_byte(&cpu->gameboy->mmu, dest, cpu->a);
+    mmu_write(&cpu->gameboy->mmu, dest, cpu->a);
 }
 
 void ld_a_r16mem(CPU *cpu, Reg16 src) {
-    cpu->a = read_byte(&cpu->gameboy->mmu, read_r16(cpu, src));
+    cpu->a = mmu_read(&cpu->gameboy->mmu, read_r16(cpu, src));
 }
 
 void ld_a_a16(CPU *cpu, uint16_t src) {
-    cpu->a = read_byte(&cpu->gameboy->mmu, src);
+    cpu->a = mmu_read(&cpu->gameboy->mmu, src);
 }
 
 void ldh_a8_a(CPU *cpu, uint8_t dest) {
-    write_byte(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)dest, cpu->a);
+    mmu_write(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)dest, cpu->a);
 }
 
 void ldh_cmem_a(CPU *cpu) {
-    write_byte(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)cpu->c, cpu->a);
+    mmu_write(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)cpu->c, cpu->a);
 }
 
 void ldh_a_a8(CPU *cpu, uint8_t src) {
-    cpu->a = read_byte(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)src);
+    cpu->a = mmu_read(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)src);
 }
 
 void ldh_a_cmem(CPU *cpu) {
-    cpu->a = read_byte(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)cpu->c);
+    cpu->a = mmu_read(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)cpu->c);
 }
 
 void ldi_hlmem_a(CPU *cpu) {
     uint16_t hl = read_r16(cpu, REG16_HL);
 
-    write_byte(&cpu->gameboy->mmu, hl, cpu->a);
+    mmu_write(&cpu->gameboy->mmu, hl, cpu->a);
 
     write_r16(cpu, REG16_HL, hl + 1);
 }
@@ -160,7 +213,7 @@ void ldi_hlmem_a(CPU *cpu) {
 void ldd_hlmem_a(CPU *cpu) {
     uint16_t hl = read_r16(cpu, REG16_HL);
 
-    write_byte(&cpu->gameboy->mmu, hl, cpu->a);
+    mmu_write(&cpu->gameboy->mmu, hl, cpu->a);
 
     write_r16(cpu, REG16_HL, hl - 1);
 }
@@ -168,7 +221,7 @@ void ldd_hlmem_a(CPU *cpu) {
 void ldi_a_hlmem(CPU *cpu) {
     uint16_t hl = read_r16(cpu, REG16_HL);
 
-    cpu->a = read_byte(&cpu->gameboy->mmu, hl);
+    cpu->a = mmu_read(&cpu->gameboy->mmu, hl);
 
     write_r16(cpu, REG16_HL, hl + 1);
 }
@@ -176,7 +229,7 @@ void ldi_a_hlmem(CPU *cpu) {
 void ldd_a_hlmem(CPU *cpu) {
     uint16_t hl = read_r16(cpu, REG16_HL);
 
-    cpu->a = read_byte(&cpu->gameboy->mmu, hl);
+    cpu->a = mmu_read(&cpu->gameboy->mmu, hl);
 
     write_r16(cpu, REG16_HL, hl - 1);
 }
@@ -186,7 +239,8 @@ void ld_sp_n16(CPU *cpu, uint16_t val) {
 }
 
 void ld_a16_sp(CPU *cpu, uint16_t dest) {
-    write_word(&cpu->gameboy->mmu, dest, cpu->sp);
+    mmu_write(&cpu->gameboy->mmu, dest, (uint8_t)cpu->sp);
+    mmu_write(&cpu->gameboy->mmu, dest + 1, (uint8_t)(cpu->sp >> 8));
 }
 
 void ld_hl_sp_e8(CPU *cpu, uint8_t val) {
@@ -195,4 +249,376 @@ void ld_hl_sp_e8(CPU *cpu, uint8_t val) {
 
 void ld_sp_hl(CPU *cpu) {
     cpu->sp = read_r16(cpu, REG16_HL);
+}
+
+
+
+// ---------------------------------
+//      arithmetic instructions
+// ---------------------------------
+
+void add_sp_e8(CPU *cpu, uint8_t val) {
+    cpu->sp += (uint8_t)val;
+}
+
+void add_hl_r16(CPU *cpu, Reg16 reg) {
+    write_r16(cpu, REG16_HL, read_r16(cpu, REG16_HL) + read_r16(cpu, reg));
+}
+
+void adc_a_r8(CPU *cpu, Reg8 reg) {
+    uint8_t op = read_r8(cpu, reg) + get_flag(cpu, FLAG_C);
+
+    set_flags_addition(cpu, cpu->a, op);
+    cpu->a += op;
+}
+
+void adc_a_n8(CPU *cpu, uint8_t val) {
+    uint8_t op = val + get_flag(cpu, FLAG_C);
+
+    set_flags_addition(cpu, cpu->a, op);
+    cpu->a += op;
+}
+
+void add_a_r8(CPU *cpu, Reg8 reg) {
+    uint8_t op = read_r8(cpu, reg);
+
+    set_flags_addition(cpu, cpu->a, op);
+    cpu->a += op;
+}
+
+void add_a_n8(CPU *cpu, uint8_t val) {
+    set_flags_addition(cpu, cpu->a, val);
+    cpu->a += val;
+}
+
+void cp_a_r8(CPU *cpu, Reg8 reg) {
+    set_flags_subtraction(cpu, cpu->a, read_r8(cpu, reg));
+}
+
+void cp_a_n8(CPU *cpu, uint8_t val) {
+    set_flags_subtraction(cpu, cpu->a, val);
+}
+
+void sbc_a_r8(CPU *cpu, Reg8 reg) {
+    uint8_t op = read_r8(cpu, reg) + get_flag(cpu, FLAG_C);
+
+    set_flags_subtraction(cpu, cpu->a, op);
+    cpu->a -= op;
+}
+
+void sbc_a_n8(CPU *cpu, uint8_t val) {
+    uint8_t op = val + get_flag(cpu, FLAG_C);
+
+    set_flags_subtraction(cpu, cpu->a, op);
+    cpu->a -= op;
+}
+
+void sub_a_r8(CPU *cpu, Reg8 reg) {
+    uint8_t op = read_r8(cpu, reg);
+
+    set_flags_subtraction(cpu, cpu->a, op);
+    cpu->a -= op;
+}
+
+void sub_a_n8(CPU *cpu, uint8_t val) {
+    set_flags_subtraction(cpu, cpu->a, val);
+    cpu->a -= val;
+}
+
+void dec_r8(CPU *cpu, Reg8 reg) {
+    write_r8(cpu, reg, read_r8(cpu, reg) - 1);
+}
+
+void inc_r8(CPU *cpu, Reg8 reg) {
+    write_r8(cpu, reg, read_r8(cpu, reg) + 1);
+}
+
+void dec_r16(CPU *cpu, Reg16 reg) {
+    write_r16(cpu, reg, read_r16(cpu, reg) - 1);
+}
+
+void inc_r16(CPU *cpu, Reg16 reg) {
+    write_r16(cpu, reg, read_r16(cpu, reg) + 1);
+}
+
+
+
+// ------------------------------
+//      bitwise instructions
+// ------------------------------
+
+void and_a_r8(CPU *cpu, Reg8 reg) {
+    cpu->a &= read_r8(cpu, reg);
+    set_flags_and(cpu, cpu->a);
+}
+
+void and_a_n8(CPU *cpu, uint8_t val) {
+    cpu->a &= val;
+    set_flags_and(cpu, val);
+}
+
+void or_a_r8(CPU *cpu, Reg8 reg) {
+    cpu->a |= read_r8(cpu, reg);
+    set_flags_or_xor(cpu, cpu->a);
+}
+
+void or_a_n8(CPU *cpu, uint8_t val) {
+    cpu->a |= val; 
+    set_flags_or_xor(cpu, cpu->a);
+}
+
+void xor_a_r8(CPU *cpu, Reg8 reg) {
+    cpu->a ^= read_r8(cpu, reg);
+    set_flags_or_xor(cpu, cpu->a);
+}
+
+void xor_a_n8(CPU *cpu, uint8_t val) {
+    cpu->a ^= val;
+    set_flags_or_xor(cpu, cpu->a);
+}
+
+void rlca(CPU *cpu) {
+    uint8_t carry = (cpu->a >> 7) & 0x01;
+
+    cpu->a = (cpu->a << 1) | carry;
+    set_flags_roll_a(cpu, carry);
+}
+
+void rla(CPU *cpu) {
+    uint8_t carry = (cpu->a >> 7) & 0x01;
+
+    cpu->a = (cpu->a << 1) | get_flag(cpu, FLAG_C);
+    set_flags_roll_a(cpu, carry);
+}
+
+void rrca(CPU *cpu) {
+    uint8_t carry = cpu->a & 0x01;
+
+    cpu->a = (cpu->a >> 1) | (carry << 7);
+    set_flags_roll_a(cpu, carry);
+}
+
+void rra(CPU *cpu) {
+    uint8_t carry = cpu->a & 0x01;
+
+    cpu->a = (cpu->a >> 1) | (get_flag(cpu, FLAG_C) << 7);
+    set_flags_roll_a(cpu, carry);
+}
+
+
+
+// ---------------------------------
+//      carry flag instructions
+// ---------------------------------
+
+void ccf(CPU *cpu) {
+    cpu->f = (cpu->f & 0xEF) | (~get_flag(cpu, FLAG_C) << FLAG_C);
+}
+
+void scf(CPU *cpu) {
+    cpu->f |= (0x01 << FLAG_C);
+}
+
+
+
+// ----------------------------------------
+//      interrupt-related instructions
+// ----------------------------------------
+
+void di(CPU *cpu) {
+    cpu->ime = 0;
+}
+
+void ei(CPU *cpu) {
+    // ime should be set AFTER THE NEXT INSTRUCTION,
+    // but this should do for now
+    cpu->ime = 1;
+}
+
+void halt(CPU *cpu) {
+    cpu->halted = 1;
+}
+
+void stop(CPU *cpu, uint8_t val) {
+    // no idea how to implement this atm
+}
+
+
+
+// --------------------------------------------
+//      jump, call and return instructions
+// --------------------------------------------
+
+void jr_e8(CPU *cpu, uint8_t val) {
+    cpu->pc += (int8_t)val;
+}
+
+uint8_t jr_cond_e8(CPU *cpu, Condition cond, uint8_t val) {
+    if (evaluate_condition(cpu, cond) == 0) return 0;
+
+    cpu->pc += (int8_t)val;
+    return 1;
+}
+
+void jp_hl(CPU *cpu) {
+    cpu->pc = read_r16(cpu, REG16_HL);
+}
+
+void jp_a16(CPU *cpu, uint16_t addr) {
+    cpu->pc = addr;
+}
+
+uint8_t jp_cond_a16(CPU *cpu, Condition cond, uint16_t addr) {
+    if (evaluate_condition(cpu, cond) == 0) return 0;
+
+    cpu->pc = addr;
+    return 1;
+}
+
+void call_a16(CPU *cpu, uint16_t addr) {
+    push_stack(cpu, cpu->pc);
+    cpu->pc = addr;
+}
+
+uint8_t call_cond_a16(CPU *cpu, Condition cond, uint16_t addr) {
+    if (evaluate_condition(cpu, cond) == 0) return 0;
+
+    push_stack(cpu, cpu->pc);
+    cpu->pc = addr;
+    return 1;
+}
+
+void ret(CPU *cpu) {
+    cpu->pc = pop_stack(cpu);
+}
+
+uint8_t ret_cond(CPU *cpu, Condition cond) {
+    if (evaluate_condition(cpu, cond) == 0) return 0;
+
+    cpu->pc = pop_stack(cpu);
+    return 1;
+}
+
+void reti(CPU *cpu) {
+    cpu->pc = pop_stack(cpu);
+    cpu->ime = 1;
+}
+
+void rst_vec(CPU *cpu, uint8_t vec) {
+    push_stack(cpu, cpu->pc);
+    cpu->pc = vec;
+}
+
+
+
+// ---------------------------
+//      misc instructions
+// ---------------------------
+
+void nop(CPU *cpu) {
+    // does nothing
+    return;
+}
+
+void daa(CPU *cpu) {
+    uint8_t h = get_flag(cpu, FLAG_H);
+    uint8_t c = get_flag(cpu, FLAG_C);
+
+    if (get_flag(cpu, FLAG_N) == 1) {
+        if (h == 1) cpu->a -= 0x06;
+        if (c == 1) cpu->a -= 0x60;
+    }
+    else {
+        if (h == 1 || (cpu->a & 0x0F) > 0x09) cpu->a += 0x06;
+        if (c == 1 || cpu->a > 0x99) {
+            cpu->a += 0x60;
+            cpu->f |= 0x10;
+        }
+    }
+
+    cpu->f |= (cpu->a == 0x00) << FLAG_Z;
+}
+
+
+// -------------------------------
+//      prefixed instructions
+// -------------------------------
+
+void rlc_r8(CPU *cpu, Reg8 reg) {
+    uint8_t val = read_r8(cpu, reg);
+    uint8_t carry = (val >> 7) & 0x01;
+    uint8_t res = (val << 1) | carry;
+
+    write_r8(cpu, reg, res);
+    set_flags_roll_shift(cpu, carry, res);
+}
+
+void rrc_r8(CPU *cpu, Reg8 reg) {
+    uint8_t val = read_r8(cpu, reg);
+    uint8_t carry = val & 0x01;
+    uint8_t res = (val >> 1) | (carry << 7);
+
+    write_r8(cpu, reg, res);
+    set_flags_roll_shift(cpu, carry, res);
+}
+
+void rl_r8(CPU *cpu, Reg8 reg) {
+    uint8_t val = read_r8(cpu, reg);
+    uint8_t carry = (val >> 7) & 0x01;
+    uint8_t res = (val << 1) | get_flag(cpu, FLAG_C);
+
+    write_r8(cpu, reg, res);
+    set_flags_roll_shift(cpu, carry, res);
+}
+
+void rr_r8(CPU *cpu, Reg8 reg) {
+    uint8_t val = read_r8(cpu, reg);
+    uint8_t carry = val & 0x01;
+    uint8_t res = (val >> 1) | (get_flag(cpu, FLAG_C) << 7);
+
+    write_r8(cpu, reg, res);
+    set_flags_roll_shift(cpu, carry, res);
+}
+
+void sla_r8(CPU *cpu, Reg8 reg) {
+    uint8_t val = read_r8(cpu, reg);
+    uint8_t res = val << 1;
+
+    write_r8(cpu, reg, res);
+    set_flags_roll_shift(cpu, (val >> 7) & 0x01, res);
+}
+
+void sra_r8(CPU *cpu, Reg8 reg) {
+    uint8_t val = read_r8(cpu, reg);
+    uint8_t res = (val >> 1) | (val & 0x80);
+
+    write_r8(cpu, reg, res);
+    set_flags_roll_shift(cpu, val & 0x01, res);
+}
+
+void srl_r8(CPU *cpu, Reg8 reg) {
+    uint8_t val = read_r8(cpu, reg);
+    uint8_t res = val >> 1;
+
+    write_r8(cpu, reg, res);
+    set_flags_roll_shift(cpu, val & 0x01, res);
+}
+
+void swap_r8(CPU *cpu, Reg8 reg) {
+    uint8_t val = read_r8(cpu, reg);
+
+    write_r8(cpu, reg, (val >> 4) | (val << 4));
+    cpu->f |= (val == 0) << FLAG_Z;
+}
+
+void bit_r8(CPU *cpu, uint8_t bit, Reg8 reg) {
+    cpu->f = (cpu->f & 0x10) | (0x20) | ((((read_r8(cpu, reg) >> bit) & 0x01) == 0x00) << FLAG_Z);
+}
+
+void res_r8(CPU *cpu, uint8_t bit, Reg8 reg) {
+    write_r8(cpu, reg, read_r8(cpu, reg) & ~(0x01 << bit));
+}
+
+void set_r8(CPU *cpu, uint8_t bit, Reg8 reg) {
+    write_r8(cpu, reg, read_r8(cpu, reg) | (0x01 << bit));
 }

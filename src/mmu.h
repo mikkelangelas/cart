@@ -7,10 +7,7 @@ typedef struct MMU {
     struct Gameboy *gameboy;
 } MMU;
 
-uint8_t read_byte(MMU *mmu, uint16_t addr);
-uint16_t read_word(MMU *mmu, uint16_t addr);
-
-void write_byte(MMU *mmu, uint16_t addr, uint8_t val);
-void write_word(MMU *mmu, uint16_t addr, uint16_t val);
+uint8_t mmu_read(MMU *mmu, uint16_t addr);
+void mmu_write(MMU *mmu, uint16_t addr, uint8_t val);
 
 #endif
