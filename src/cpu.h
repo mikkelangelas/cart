@@ -147,6 +147,8 @@ void rla(CPU *cpu);
 void rrca(CPU *cpu);
 void rra(CPU *cpu);
 
+void cpl(CPU *cpu);
+
 // carry instructions
 
 void ccf(CPU *cpu);

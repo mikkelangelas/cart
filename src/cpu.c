@@ -12,25 +12,25 @@ static inline uint8_t get_flag(CPU *cpu, Flag flag) {
     return (cpu->f >> flag) & 0x01;
 }
 
+static void set_flags_sp_e8(CPU *cpu, uint8_t op) {
+    cpu->f = 0x00;
+    cpu->f |= (((uint8_t)cpu->sp & 0x0F) + (op & 0x0F) > 0x0F) << FLAG_H;
+    cpu->f |= (cpu->sp + (uint16_t)op > 0x00FF) << FLAG_C;
+}
+
 // TODO -> sould these 2 be inline as well?
 static void set_flags_addition(CPU *cpu, uint8_t op1, uint8_t op2) {
-    uint8_t new_flags = 0x00;
-
-    new_flags |= (op1 + op2 == 0x00) << FLAG_Z;
-    new_flags |= ((op1 & 0x0F) + (op2 & 0x0F) > 0x0F) << FLAG_H;
-    new_flags |= ((uint16_t)op1 + (uint16_t)op2 > 0x00FF) << FLAG_C;
-
-    cpu->f = new_flags;
+    cpu->f = 0x00;
+    cpu->f |= (op1 + op2 == 0x00) << FLAG_Z;
+    cpu->f |= ((op1 & 0x0F) + (op2 & 0x0F) > 0x0F) << FLAG_H;
+    cpu->f |= ((uint16_t)op1 + (uint16_t)op2 > 0x00FF) << FLAG_C;
 }
 
 static void set_flags_subtraction(CPU *cpu, uint8_t op1, uint8_t op2) {
-    uint8_t new_flags = 0x40;
-
-    new_flags |= (op1 - op2 == 0x00) << FLAG_Z;
-    new_flags |= ((op2 & 0x0F) > (op1 & 0x0F)) << FLAG_H;
-    new_flags |= (op2 > op1) << FLAG_C;
-
-    cpu->f = new_flags;
+    cpu->f = 0x40;
+    cpu->f |= (op1 - op2 == 0x00) << FLAG_Z;
+    cpu->f |= ((op2 & 0x0F) > (op1 & 0x0F)) << FLAG_H;
+    cpu->f |= (op2 > op1) << FLAG_C;
 }
 
 static inline void set_flags_and(CPU *cpu, uint8_t res) {
@@ -245,6 +245,7 @@ void ld_a16_sp(CPU *cpu, uint16_t dest) {
 
 void ld_hl_sp_e8(CPU *cpu, uint8_t val) {
     write_r16(cpu, REG16_HL, cpu->sp += (int8_t)val);
+    set_flags_sp_e8(cpu, val);
 }
 
 void ld_sp_hl(CPU *cpu) {
@@ -258,11 +259,19 @@ void ld_sp_hl(CPU *cpu) {
 // ---------------------------------
 
 void add_sp_e8(CPU *cpu, uint8_t val) {
-    cpu->sp += (uint8_t)val;
+    cpu->sp += (int8_t)val;
+    set_flags_sp_e8(cpu, val);
 }
 
 void add_hl_r16(CPU *cpu, Reg16 reg) {
-    write_r16(cpu, REG16_HL, read_r16(cpu, REG16_HL) + read_r16(cpu, reg));
+    uint16_t op1 = read_r16(cpu, REG16_HL);
+    uint16_t op2 = read_r16(cpu, reg);
+
+    write_r16(cpu, REG16_HL, op1 + op2);
+
+    cpu->f &= 0x80;
+    cpu->f |= ((op1 & 0x00FF) + (op2 & 0x00FF) > 0x00FF) << FLAG_H;
+    cpu->f |= ((uint32_t)op1 + (uint32_t)op2 > 0xFFFF) << FLAG_C;
 }
 
 void adc_a_r8(CPU *cpu, Reg8 reg) {
@@ -326,11 +335,24 @@ void sub_a_n8(CPU *cpu, uint8_t val) {
 }
 
 void dec_r8(CPU *cpu, Reg8 reg) {
-    write_r8(cpu, reg, read_r8(cpu, reg) - 1);
+    uint8_t val = read_r8(cpu, reg);
+
+    write_r8(cpu, reg, val - 1);
+
+    cpu->f &= 0x10;
+    cpu->f |= (val + 1 == 0x00) << FLAG_Z;
+    cpu->f |= 0x40;
+    cpu->f |= (0x01 > val) << FLAG_H;
 }
 
 void inc_r8(CPU *cpu, Reg8 reg) {
-    write_r8(cpu, reg, read_r8(cpu, reg) + 1);
+    uint8_t val = read_r8(cpu, reg);
+
+    write_r8(cpu, reg, val + 1);
+
+    cpu->f &= 0x10;
+    cpu->f |= (val - 1 == 0x00) << FLAG_Z;
+    cpu->f |= ((val & 0x0F) + 1 > 0x0F) << FLAG_H;
 }
 
 void dec_r16(CPU *cpu, Reg16 reg) {
@@ -405,6 +427,11 @@ void rra(CPU *cpu) {
     set_flags_roll_a(cpu, carry);
 }
 
+void cpl(CPU *cpu) {
+    cpu->a = ~cpu->a;
+    cpu->f |= 0x60;
+}
+
 
 
 // ---------------------------------
@@ -412,11 +439,11 @@ void rra(CPU *cpu) {
 // ---------------------------------
 
 void ccf(CPU *cpu) {
-    cpu->f = (cpu->f & 0xEF) | (~get_flag(cpu, FLAG_C) << FLAG_C);
+    cpu->f = (cpu->f & 0x80) | (~get_flag(cpu, FLAG_C) << FLAG_C);
 }
 
 void scf(CPU *cpu) {
-    cpu->f |= (0x01 << FLAG_C);
+    cpu->f = (cpu->f & 0x80) | 0x10;
 }
 
 
