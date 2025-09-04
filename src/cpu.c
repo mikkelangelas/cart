@@ -93,11 +93,167 @@ uint8_t cpu_step(CPU *cpu) {
 }
 
 uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
+    if (opcode <= 0x3F) {
+        uint8_t column = opcode & 0x0F;
 
+        switch (column) {
+            case 0x00:
+            case 0x08:
+                switch (opcode) {
+                    case 0x00: nop(cpu); break;
+                    case 0x10: stop(cpu, pc_fetch_byte(cpu)); break;
+                    case 0x08: ld_a16_sp(cpu, pc_fetch_word(cpu)); break;
+                    case 0x18: jr_e8(cpu, pc_fetch_byte(cpu)); break;
+                    default: jr_cond_e8(cpu, (opcode >> 3) & 0x03, pc_fetch_byte(cpu)); break;
+                }
+                break;
+            case 0x01: ld_r16_n16(cpu, (opcode >> 4) & 0x03, pc_fetch_word(cpu)); break;
+            case 0x02:
+                switch (opcode) {
+                    case 0x02:
+                    case 0x12: ld_r16mem_a(cpu, (opcode >> 4) & 0x03); break;
+                    case 0x22: ldi_hlmem_a(cpu); break;
+                    case 0x23: ldd_hlmem_a(cpu); break;
+                }
+                break;
+            case 0x03: inc_r16(cpu, (opcode >> 4) & 0x03); break;
+
+            case 0x04:
+            case 0x0C: inc_r8(cpu, (opcode >> 3) & 0x07); break;
+
+            case 0x05:
+            case 0x0D: dec_r8(cpu, (opcode >> 3) & 0x07); break;
+
+            case 0x06:
+            case 0x0E: ld_r8_n8(cpu, (opcode >> 3) & 0x07, pc_fetch_byte(cpu)); break;
+
+            case 0x07:
+                switch (opcode) {
+                    case 0x07: rlca(cpu); break;
+                    case 0x17: rla(cpu); break;
+                    case 0x27: daa(cpu); break;
+                    case 0x37: scf(cpu); break;
+                }
+                break;
+            case 0x09: add_hl_r16(cpu, (opcode >> 4) & 0x03); break;
+            case 0x0A:
+                switch (opcode) {
+                    case 0x0A:
+                    case 0x1A: ld_a_r16mem(cpu, (opcode >> 4) & 0x03); break;
+                    case 0x2A: ldi_a_hlmem(cpu); break;
+                    case 0x3A: ldd_a_hlmem(cpu); break;
+                }
+                break;
+            case 0x0B: dec_r16(cpu, (opcode >> 4) & 0x03); break;
+            case 0x0F:
+                switch (opcode) {
+                    case 0x0F: rrca(cpu); break;
+                    case 0x1F: rra(cpu); break;
+                    case 0x2F: cpl(cpu); break;
+                    case 0x3F: ccf(cpu); break;
+                }
+        }
+
+    }
+    else if (opcode <= 0x75) ld_r8_r8(cpu, (opcode >> 3) & 0x07, opcode & 0x07);
+    else if (opcode == 0x76) halt(cpu);
+    else if (opcode <= 0x7F) ld_r8_r8(cpu, (opcode >> 3) & 0x07, opcode & 0x07);
+    else if (opcode <= 0x87) add_a_r8(cpu, opcode & 0x07);
+    else if (opcode <= 0x8F) adc_a_r8(cpu, opcode & 0x07);
+    else if (opcode <= 0x97) sub_a_r8(cpu, opcode & 0x07); 
+    else if (opcode <= 0x9F) sbc_a_r8(cpu, opcode & 0x07);
+    else if (opcode <= 0xA7) and_a_r8(cpu, opcode & 0x07);
+    else if (opcode <= 0xAF) xor_a_r8(cpu, opcode & 0x07);
+    else if (opcode <= 0xB7) or_a_r8(cpu, opcode & 0x07);
+    else if (opcode <= 0xBF) cp_a_r8(cpu, opcode & 0x07);
+    else {
+        uint8_t column = opcode & 0x0F; 
+
+        switch (column) {
+            case 0x00:
+            case 0x08:
+                switch (opcode) {
+                    case 0xE0: ldh_a8_a(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xF0: ldh_a_a8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xE8: add_sp_e8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xF8: ld_hl_sp_e8(cpu, pc_fetch_byte(cpu)); break;
+                    default: ret_cond(cpu, (opcode >> 3) & 0x03); break;
+                }
+                break;
+            case 0x01:
+            {
+                Reg16 r16 = (opcode >> 4) & 0x03;
+                pop_r16(cpu, r16 == 0x03 ? 0x04 : r16);
+                break;
+            }
+            case 0x02:
+            case 0x0A:
+                switch (opcode) {
+                    case 0xE2: ldh_cmem_a(cpu); break;
+                    case 0xF2: ldh_a_cmem(cpu); break;
+                    case 0xEA: ld_a16_a(cpu, pc_fetch_word(cpu)); break;
+                    case 0xFA: ld_a_a16(cpu, pc_fetch_word(cpu)); break;
+                    default: jp_cond_a16(cpu, (opcode >> 3) & 0x03, pc_fetch_word(cpu)); break;
+                }
+                break;
+            case 0x03:
+                switch (opcode) {
+                    case 0xC3: jp_a16(cpu, pc_fetch_word(cpu)); break;
+                    case 0xF3: di(cpu); break;
+                }
+                break;
+            case 0x04:
+            case 0x0C: call_cond_a16(cpu, (opcode >> 3) & 0x03, pc_fetch_word(cpu)); break;
+            case 0x05:
+            {
+                Reg16 r16 = (opcode >> 4) & 0x03;
+                push_r16(cpu, r16 == 0x03 ? 0x04 : r16);
+                break;
+            }
+            case 0x06:
+                switch (opcode) {
+                    case 0xC6: add_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xD6: sub_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xE6: and_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xF6: or_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                }
+                break;
+            case 0x07:
+            case 0x0F: rst_vec(cpu, opcode & 0x38); break;
+            case 0x09:
+                switch (opcode) {
+                    case 0xC9: ret(cpu); break;
+                    case 0xD9: reti(cpu); break;
+                    case 0xE9: jp_hl(cpu); break;
+                    case 0xF9: ld_sp_hl(cpu); break;
+                }
+                break;
+            case 0x0B: ei(cpu); break;
+            case 0x0D: call_a16(cpu, pc_fetch_word(cpu)); break;
+        }
+    }
 }
 
 uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode) {
+    Reg8 reg = opcode & 0x07;
 
+    if (opcode <= 0x07) rlc_r8(cpu, reg);
+    else if (opcode <= 0x0F) rrc_r8(cpu, reg);
+    else if (opcode <= 0x17) rl_r8(cpu, reg);
+    else if (opcode <= 0x1F) rr_r8(cpu, reg);
+    else if (opcode <= 0x27) sla_r8(cpu, reg);
+    else if (opcode <= 0x2F) sra_r8(cpu, reg);
+    else if (opcode <= 0x37) swap_r8(cpu, reg);
+    else if (opcode <= 0x3F) srl_r8(cpu, reg);
+    else {
+        uint8_t bit = (opcode >> 3) & 0x07;
+
+        if (opcode <= 0x7F) bit_r8(cpu, bit, reg);
+        else if (opcode <= 0xBF) res_r8(cpu, bit, reg);
+        else if (opcode <= 0xFF) set_r8(cpu, bit, reg);
+    }
+
+    return 0x01; // dummy value for now
 }
 
 uint8_t read_r8(CPU *cpu, Reg8 reg) {

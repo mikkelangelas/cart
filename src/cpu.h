@@ -186,6 +186,10 @@ void nop(CPU *cpu);
 
 void daa(CPU *cpu);
 
+void pop_r16(CPU *cpu, Reg16 dest);
+
+void push_r16(CPU *cpu, Reg16 src);
+
 // prefixed instructions
 
 void rlc_r8(CPU *cpu, Reg8 reg);

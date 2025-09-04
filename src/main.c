@@ -1,6 +1,7 @@
-#include <stdio.h>
+#include "cart.h"
 
 int main(int argc, char *argv[]) {
-    printf("cart");
+    if (cart_run() == 0) return -1;
+
     return 0;
 }
