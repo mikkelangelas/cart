@@ -5,6 +5,9 @@
 
 #include "cpu.h"
 #include "mmu.h"
+#include "ppu.h"
+
+#include "cartridge.h"
 
 #define GB_SCREEN_W 160
 #define GB_SCREEN_H 144
@@ -20,6 +23,7 @@ typedef struct Gameboy {
     // main components
     CPU cpu; 
     MMU mmu;
+    PPU ppu;
 
     uint8_t framebuffer[GB_SCREEN_W * GB_SCREEN_H];
 
@@ -30,6 +34,14 @@ typedef struct Gameboy {
     uint8_t io_registers[IO_REGISTERS_SIZE];
     uint8_t hram[HRAM_SIZE];
     uint8_t ie;
+
+    Cartridge *cartridge;
 } Gameboy;
+
+Gameboy *create_gameboy(const char *rom_file);
+
+void destroy_gameboy(Gameboy *gb);
+
+void gameboy_step(Gameboy *gb);
 
 #endif

@@ -54,7 +54,51 @@ static inline uint8_t evaluate_condition(CPU *cpu, Condition cond) {
     return get_flag(cpu, 7 - (3 * (cond >> 1))) == (cond & 0x01);
 }
 
+static uint8_t pc_fetch_byte(CPU *cpu) {
+    return mmu_read(&cpu->gameboy->mmu, cpu->pc++);
+}
 
+
+static uint16_t pc_fetch_word(CPU *cpu) {
+    uint16_t val = 0x0000;
+
+    val |= mmu_read(&cpu->gameboy->mmu, cpu->pc++);
+    val |= mmu_read(&cpu->gameboy->mmu, cpu->pc++);
+
+    return val;
+}
+
+
+
+void cpu_init(CPU *cpu, struct Gameboy *gb) {
+    *cpu = (CPU){
+        .a = 0x00,
+        .f = 0x00,
+        .b = 0x00,
+        .c = 0x00,
+        .d = 0x00,
+        .e = 0x00,
+        .h = 0x00,
+        .l = 0x00,
+        .pc = 0x0000,
+        .sp = 0x0000,
+        .ime = 0,
+        .halted = 0,
+        .gameboy = gb
+    };
+}
+
+uint8_t cpu_step(CPU *cpu) {
+
+}
+
+uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
+
+}
+
+uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode) {
+
+}
 
 uint8_t read_r8(CPU *cpu, Reg8 reg) {
     uint8_t val = 0x00;
@@ -97,7 +141,7 @@ uint16_t read_r16(CPU *cpu, Reg16 reg) {
             break;
     }
 
-    return (0x0000 | ((uint16_t)hi << 8) | (uint16_t)lo);
+    return ((uint16_t)hi << 8) | (uint16_t)lo;
 }
 
 void write_r8(CPU *cpu, Reg8 reg, uint8_t val) {

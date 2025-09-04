@@ -59,7 +59,7 @@ typedef struct CPU {
     struct Gameboy *gameboy;
 } CPU;
 
-void cpu_init(CPU *cpu);
+void cpu_init(CPU *cpu, struct Gameboy *gb);
 
 uint8_t cpu_step(CPU *cpu);
 
