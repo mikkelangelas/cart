@@ -94,9 +94,7 @@ uint8_t cpu_step(CPU *cpu) {
 
 uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
     if (opcode <= 0x3F) {
-        uint8_t column = opcode & 0x0F;
-
-        switch (column) {
+        switch (opcode & 0x0F) {
             case 0x00:
             case 0x08:
                 switch (opcode) {
@@ -107,7 +105,9 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                     default: jr_cond_e8(cpu, (opcode >> 3) & 0x03, pc_fetch_byte(cpu)); break;
                 }
                 break;
+
             case 0x01: ld_r16_n16(cpu, (opcode >> 4) & 0x03, pc_fetch_word(cpu)); break;
+
             case 0x02:
                 switch (opcode) {
                     case 0x02:
@@ -116,6 +116,7 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                     case 0x23: ldd_hlmem_a(cpu); break;
                 }
                 break;
+
             case 0x03: inc_r16(cpu, (opcode >> 4) & 0x03); break;
 
             case 0x04:
@@ -135,7 +136,9 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                     case 0x37: scf(cpu); break;
                 }
                 break;
+
             case 0x09: add_hl_r16(cpu, (opcode >> 4) & 0x03); break;
+
             case 0x0A:
                 switch (opcode) {
                     case 0x0A:
@@ -144,7 +147,9 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                     case 0x3A: ldd_a_hlmem(cpu); break;
                 }
                 break;
+
             case 0x0B: dec_r16(cpu, (opcode >> 4) & 0x03); break;
+
             case 0x0F:
                 switch (opcode) {
                     case 0x0F: rrca(cpu); break;
@@ -167,9 +172,7 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
     else if (opcode <= 0xB7) or_a_r8(cpu, opcode & 0x07);
     else if (opcode <= 0xBF) cp_a_r8(cpu, opcode & 0x07);
     else {
-        uint8_t column = opcode & 0x0F; 
-
-        switch (column) {
+        switch (opcode & 0x0F) {
             case 0x00:
             case 0x08:
                 switch (opcode) {
@@ -180,12 +183,14 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                     default: ret_cond(cpu, (opcode >> 3) & 0x03); break;
                 }
                 break;
+
             case 0x01:
             {
                 Reg16 r16 = (opcode >> 4) & 0x03;
                 pop_r16(cpu, r16 == 0x03 ? 0x04 : r16);
                 break;
             }
+
             case 0x02:
             case 0x0A:
                 switch (opcode) {
@@ -196,20 +201,24 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                     default: jp_cond_a16(cpu, (opcode >> 3) & 0x03, pc_fetch_word(cpu)); break;
                 }
                 break;
+
             case 0x03:
                 switch (opcode) {
                     case 0xC3: jp_a16(cpu, pc_fetch_word(cpu)); break;
                     case 0xF3: di(cpu); break;
                 }
                 break;
+
             case 0x04:
             case 0x0C: call_cond_a16(cpu, (opcode >> 3) & 0x03, pc_fetch_word(cpu)); break;
+
             case 0x05:
             {
                 Reg16 r16 = (opcode >> 4) & 0x03;
                 push_r16(cpu, r16 == 0x03 ? 0x04 : r16);
                 break;
             }
+
             case 0x06:
                 switch (opcode) {
                     case 0xC6: add_a_n8(cpu, pc_fetch_byte(cpu)); break;
@@ -218,8 +227,10 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                     case 0xF6: or_a_n8(cpu, pc_fetch_byte(cpu)); break;
                 }
                 break;
+
             case 0x07:
             case 0x0F: rst_vec(cpu, opcode & 0x38); break;
+
             case 0x09:
                 switch (opcode) {
                     case 0xC9: ret(cpu); break;
@@ -228,10 +239,14 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                     case 0xF9: ld_sp_hl(cpu); break;
                 }
                 break;
+
             case 0x0B: ei(cpu); break;
+
             case 0x0D: call_a16(cpu, pc_fetch_word(cpu)); break;
         }
     }
+
+    return 0x01; // dummy value for now
 }
 
 uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode) {
