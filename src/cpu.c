@@ -12,25 +12,24 @@ static inline uint8_t get_flag(CPU *cpu, Flag flag) {
     return (cpu->f >> flag) & 0x01;
 }
 
-static void set_flags_sp_e8(CPU *cpu, uint8_t op) {
-    cpu->f = 0x00;
-    cpu->f |= (((uint8_t)cpu->sp & 0x0F) + (op & 0x0F) > 0x0F) << FLAG_H;
-    cpu->f |= (cpu->sp + (uint16_t)op > 0x00FF) << FLAG_C;
+static inline void set_flags_sp_e8(CPU *cpu, uint8_t op) {
+    cpu->f = 0x00 
+        | (((uint8_t)cpu->sp & 0x0F) + (op & 0x0F) > 0x0F) << FLAG_H
+        | (cpu->sp + (uint16_t)op > 0x00FF) << FLAG_C;
 }
 
-// TODO -> sould these 2 be inline as well?
-static void set_flags_addition(CPU *cpu, uint8_t op1, uint8_t op2) {
-    cpu->f = 0x00;
-    cpu->f |= (op1 + op2 == 0x00) << FLAG_Z;
-    cpu->f |= ((op1 & 0x0F) + (op2 & 0x0F) > 0x0F) << FLAG_H;
-    cpu->f |= ((uint16_t)op1 + (uint16_t)op2 > 0x00FF) << FLAG_C;
+static inline void set_flags_addition(CPU *cpu, uint8_t op1, uint8_t op2) {
+    cpu->f = 0x00
+        | (op1 + op2 == 0x00) << FLAG_Z
+        | ((op1 & 0x0F) + (op2 & 0x0F) > 0x0F) << FLAG_H
+        | ((uint16_t)op1 + (uint16_t)op2 > 0x00FF) << FLAG_C;
 }
 
-static void set_flags_subtraction(CPU *cpu, uint8_t op1, uint8_t op2) {
-    cpu->f = 0x40;
-    cpu->f |= (op1 - op2 == 0x00) << FLAG_Z;
-    cpu->f |= ((op2 & 0x0F) > (op1 & 0x0F)) << FLAG_H;
-    cpu->f |= (op2 > op1) << FLAG_C;
+static inline void set_flags_subtraction(CPU *cpu, uint8_t op1, uint8_t op2) {
+    cpu->f = 0x40 
+        | (op1 - op2 == 0x00) << FLAG_Z
+        | ((op2 & 0x0F) > (op1 & 0x0F)) << FLAG_H
+        | (op2 > op1) << FLAG_C;
 }
 
 static inline void set_flags_and(CPU *cpu, uint8_t res) {
@@ -89,81 +88,116 @@ void cpu_init(CPU *cpu, struct Gameboy *gb) {
 }
 
 uint8_t cpu_step(CPU *cpu) {
+    // handling interrupts here
 
+    uint8_t opcode = pc_fetch_byte(cpu);
+
+    uint8_t cycles = (opcode == 0xCB)
+        ? cpu_execute(cpu, opcode)
+        : cpu_execute_prefixed(cpu, pc_fetch_byte(cpu));
+
+    return cycles;
 }
 
 uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
-    if (opcode <= 0x3F) {
+    uint8_t extra_cycles = 0;
+
+    if (opcode <= 0x3F) {                                                        // block 0
         switch (opcode & 0x0F) {
             case 0x00:
             case 0x08:
                 switch (opcode) {
-                    case 0x00: nop(cpu); break;
-                    case 0x10: stop(cpu, pc_fetch_byte(cpu)); break;
-                    case 0x08: ld_a16_sp(cpu, pc_fetch_word(cpu)); break;
-                    case 0x18: jr_e8(cpu, pc_fetch_byte(cpu)); break;
-                    default: jr_cond_e8(cpu, (opcode >> 3) & 0x03, pc_fetch_byte(cpu)); break;
+                    case 0x00:
+                        nop(cpu); break;
+                    case 0x10:
+                        stop(cpu, pc_fetch_byte(cpu)); break;
+                    case 0x08:
+                        ld_a16_sp(cpu, pc_fetch_word(cpu)); break;
+                    case 0x18: 
+                        jr_e8(cpu, pc_fetch_byte(cpu)); break;
+                    default:
+                        extra_cycles = jr_cond_e8(cpu, (opcode >> 3) & 0x03, pc_fetch_byte(cpu)); break;
                 }
                 break;
 
-            case 0x01: ld_r16_n16(cpu, (opcode >> 4) & 0x03, pc_fetch_word(cpu)); break;
+            case 0x01:
+                ld_r16_n16(cpu, (opcode >> 4) & 0x03, pc_fetch_word(cpu)); break;
 
             case 0x02:
                 switch (opcode) {
                     case 0x02:
-                    case 0x12: ld_r16mem_a(cpu, (opcode >> 4) & 0x03); break;
-                    case 0x22: ldi_hlmem_a(cpu); break;
-                    case 0x23: ldd_hlmem_a(cpu); break;
+                    case 0x12:
+                        ld_r16mem_a(cpu, (opcode >> 4) & 0x03); break;
+                    case 0x22:
+                        ldi_hlmem_a(cpu); break;
+                    case 0x23:
+                        ldd_hlmem_a(cpu); break;
                 }
                 break;
 
             case 0x03: inc_r16(cpu, (opcode >> 4) & 0x03); break;
 
             case 0x04:
-            case 0x0C: inc_r8(cpu, (opcode >> 3) & 0x07); break;
+            case 0x0C:
+                inc_r8(cpu, (opcode >> 3) & 0x07); break;
 
             case 0x05:
-            case 0x0D: dec_r8(cpu, (opcode >> 3) & 0x07); break;
+            case 0x0D:
+                dec_r8(cpu, (opcode >> 3) & 0x07); break;
 
             case 0x06:
-            case 0x0E: ld_r8_n8(cpu, (opcode >> 3) & 0x07, pc_fetch_byte(cpu)); break;
+            case 0x0E:
+                ld_r8_n8(cpu, (opcode >> 3) & 0x07, pc_fetch_byte(cpu)); break;
 
             case 0x07:
                 switch (opcode) {
-                    case 0x07: rlca(cpu); break;
-                    case 0x17: rla(cpu); break;
-                    case 0x27: daa(cpu); break;
-                    case 0x37: scf(cpu); break;
+                    case 0x07:
+                        rlca(cpu); break;
+                    case 0x17:
+                        rla(cpu); break;
+                    case 0x27:
+                        daa(cpu); break;
+                    case 0x37:
+                        scf(cpu); break;
                 }
                 break;
 
-            case 0x09: add_hl_r16(cpu, (opcode >> 4) & 0x03); break;
+            case 0x09:
+                add_hl_r16(cpu, (opcode >> 4) & 0x03); break;
 
             case 0x0A:
                 switch (opcode) {
                     case 0x0A:
-                    case 0x1A: ld_a_r16mem(cpu, (opcode >> 4) & 0x03); break;
-                    case 0x2A: ldi_a_hlmem(cpu); break;
-                    case 0x3A: ldd_a_hlmem(cpu); break;
+                    case 0x1A:
+                        ld_a_r16mem(cpu, (opcode >> 4) & 0x03); break;
+                    case 0x2A:
+                        ldi_a_hlmem(cpu); break;
+                    case 0x3A:
+                        ldd_a_hlmem(cpu); break;
                 }
                 break;
 
-            case 0x0B: dec_r16(cpu, (opcode >> 4) & 0x03); break;
+            case 0x0B:
+                dec_r16(cpu, (opcode >> 4) & 0x03); break;
 
             case 0x0F:
                 switch (opcode) {
-                    case 0x0F: rrca(cpu); break;
-                    case 0x1F: rra(cpu); break;
-                    case 0x2F: cpl(cpu); break;
-                    case 0x3F: ccf(cpu); break;
+                    case 0x0F:
+                        rrca(cpu); break;
+                    case 0x1F:
+                        rra(cpu); break;
+                    case 0x2F:
+                        cpl(cpu); break;
+                    case 0x3F:
+                        ccf(cpu); break;
                 }
         }
 
     }
-    else if (opcode <= 0x75) ld_r8_r8(cpu, (opcode >> 3) & 0x07, opcode & 0x07);
+    else if (opcode <= 0x75) ld_r8_r8(cpu, (opcode >> 3) & 0x07, opcode & 0x07); // block 1
     else if (opcode == 0x76) halt(cpu);
     else if (opcode <= 0x7F) ld_r8_r8(cpu, (opcode >> 3) & 0x07, opcode & 0x07);
-    else if (opcode <= 0x87) add_a_r8(cpu, opcode & 0x07);
+    else if (opcode <= 0x87) add_a_r8(cpu, opcode & 0x07);                       // block 2
     else if (opcode <= 0x8F) adc_a_r8(cpu, opcode & 0x07);
     else if (opcode <= 0x97) sub_a_r8(cpu, opcode & 0x07); 
     else if (opcode <= 0x9F) sbc_a_r8(cpu, opcode & 0x07);
@@ -171,49 +205,63 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
     else if (opcode <= 0xAF) xor_a_r8(cpu, opcode & 0x07);
     else if (opcode <= 0xB7) or_a_r8(cpu, opcode & 0x07);
     else if (opcode <= 0xBF) cp_a_r8(cpu, opcode & 0x07);
-    else {
+    else {                                                                       // block 3
         switch (opcode & 0x0F) {
             case 0x00:
             case 0x08:
                 switch (opcode) {
-                    case 0xE0: ldh_a8_a(cpu, pc_fetch_byte(cpu)); break;
-                    case 0xF0: ldh_a_a8(cpu, pc_fetch_byte(cpu)); break;
-                    case 0xE8: add_sp_e8(cpu, pc_fetch_byte(cpu)); break;
-                    case 0xF8: ld_hl_sp_e8(cpu, pc_fetch_byte(cpu)); break;
-                    default: ret_cond(cpu, (opcode >> 3) & 0x03); break;
+                    case 0xE0:
+                        ldh_a8_a(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xF0:
+                        ldh_a_a8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xE8:
+                        add_sp_e8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xF8:
+                        ld_hl_sp_e8(cpu, pc_fetch_byte(cpu)); break;
+                    default:
+                        extra_cycles = ret_cond(cpu, (opcode >> 3) & 0x03) * 3; break;
                 }
                 break;
 
-            case 0x01:
-            {
+            case 0x01: {
+                // since 2 enum variants can't have the same value,
+                // a check and adjustment is needed
                 Reg16 r16 = (opcode >> 4) & 0x03;
                 pop_r16(cpu, r16 == 0x03 ? 0x04 : r16);
                 break;
             }
 
-            case 0x02:
-            case 0x0A:
+            case 0x02: case 0x0A:
                 switch (opcode) {
-                    case 0xE2: ldh_cmem_a(cpu); break;
-                    case 0xF2: ldh_a_cmem(cpu); break;
-                    case 0xEA: ld_a16_a(cpu, pc_fetch_word(cpu)); break;
-                    case 0xFA: ld_a_a16(cpu, pc_fetch_word(cpu)); break;
-                    default: jp_cond_a16(cpu, (opcode >> 3) & 0x03, pc_fetch_word(cpu)); break;
+                    case 0xE2:
+                        ldh_cmem_a(cpu); break;
+                    case 0xF2:
+                        ldh_a_cmem(cpu); break;
+                    case 0xEA:
+                        ld_a16_a(cpu, pc_fetch_word(cpu)); break;
+                    case 0xFA:
+                        ld_a_a16(cpu, pc_fetch_word(cpu)); break;
+                    default:
+                        extra_cycles = jp_cond_a16(cpu, (opcode >> 3) & 0x03, pc_fetch_word(cpu)); break;
                 }
                 break;
 
             case 0x03:
                 switch (opcode) {
-                    case 0xC3: jp_a16(cpu, pc_fetch_word(cpu)); break;
-                    case 0xF3: di(cpu); break;
+                    case 0xC3:
+                        jp_a16(cpu, pc_fetch_word(cpu)); break;
+                    case 0xF3:
+                        di(cpu); break;
                 }
                 break;
 
             case 0x04:
-            case 0x0C: call_cond_a16(cpu, (opcode >> 3) & 0x03, pc_fetch_word(cpu)); break;
+            case 0x0C:
+                extra_cycles = call_cond_a16(cpu, (opcode >> 3) & 0x03, pc_fetch_word(cpu)) * 3; break;
 
-            case 0x05:
-            {
+            case 0x05: {
+                // since 2 enum variants can't have the same value,
+                // a check and adjustment is needed
                 Reg16 r16 = (opcode >> 4) & 0x03;
                 push_r16(cpu, r16 == 0x03 ? 0x04 : r16);
                 break;
@@ -221,32 +269,43 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
 
             case 0x06:
                 switch (opcode) {
-                    case 0xC6: add_a_n8(cpu, pc_fetch_byte(cpu)); break;
-                    case 0xD6: sub_a_n8(cpu, pc_fetch_byte(cpu)); break;
-                    case 0xE6: and_a_n8(cpu, pc_fetch_byte(cpu)); break;
-                    case 0xF6: or_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xC6:
+                        add_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xD6:
+                        sub_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xE6:
+                        and_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xF6:
+                        or_a_n8(cpu, pc_fetch_byte(cpu)); break;
                 }
                 break;
 
             case 0x07:
-            case 0x0F: rst_vec(cpu, opcode & 0x38); break;
+            case 0x0F:
+                rst_vec(cpu, opcode & 0x38); break;
 
             case 0x09:
                 switch (opcode) {
-                    case 0xC9: ret(cpu); break;
-                    case 0xD9: reti(cpu); break;
-                    case 0xE9: jp_hl(cpu); break;
-                    case 0xF9: ld_sp_hl(cpu); break;
+                    case 0xC9:
+                        ret(cpu); break;
+                    case 0xD9:
+                        reti(cpu); break;
+                    case 0xE9:
+                        jp_hl(cpu); break;
+                    case 0xF9:
+                        ld_sp_hl(cpu); break;
                 }
                 break;
 
-            case 0x0B: ei(cpu); break;
+            case 0x0B:
+                ei(cpu); break;
 
-            case 0x0D: call_a16(cpu, pc_fetch_word(cpu)); break;
+            case 0x0D:
+                call_a16(cpu, pc_fetch_word(cpu)); break;
         }
     }
 
-    return 0x01; // dummy value for now
+    return 0x01 + extra_cycles; // dummy value for now
 }
 
 uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode) {
@@ -275,14 +334,22 @@ uint8_t read_r8(CPU *cpu, Reg8 reg) {
     uint8_t val = 0x00;
 
     switch (reg) {
-        case REG8_B: val = cpu->b; break;
-        case REG8_C: val = cpu->c; break;
-        case REG8_D: val = cpu->d; break;
-        case REG8_E: val = cpu->e; break;
-        case REG8_H: val = cpu->h; break;
-        case REG8_L: val = cpu->l; break;
-        case REG8_HLMEM: val = mmu_read(&cpu->gameboy->mmu, read_r16(cpu, REG16_HL)); break;
-        case REG8_A: val = cpu->a; break;
+        case REG8_B:
+            val = cpu->b; break;
+        case REG8_C:
+            val = cpu->c; break;
+        case REG8_D:
+            val = cpu->d; break;
+        case REG8_E:
+            val = cpu->e; break;
+        case REG8_H:
+            val = cpu->h; break;
+        case REG8_L:
+            val = cpu->l; break;
+        case REG8_HLMEM:
+            val = mmu_read(&cpu->gameboy->mmu, read_r16(cpu, REG16_HL)); break;
+        case REG8_A:
+            val = cpu->a; break;
     }
 
     return val;
@@ -317,19 +384,28 @@ uint16_t read_r16(CPU *cpu, Reg16 reg) {
 
 void write_r8(CPU *cpu, Reg8 reg, uint8_t val) {
     switch (reg) {
-        case REG8_B: cpu->b = val; break;
-        case REG8_C: cpu->c = val; break;
-        case REG8_D: cpu->d = val; break;
-        case REG8_E: cpu->e = val; break;
-        case REG8_H: cpu->h = val; break;
-        case REG8_L: cpu->l = val; break;
-        case REG8_HLMEM: mmu_write(&cpu->gameboy->mmu, read_r16(cpu, REG16_HL), val); break;
-        case REG8_A: cpu->a = val; break;
+        case REG8_B:
+            cpu->b = val; break;
+        case REG8_C:
+            cpu->c = val; break;
+        case REG8_D:
+            cpu->d = val; break;
+        case REG8_E:
+            cpu->e = val; break;
+        case REG8_H:
+            cpu->h = val; break;
+        case REG8_L:
+            cpu->l = val; break;
+        case REG8_HLMEM:
+            mmu_write(&cpu->gameboy->mmu, read_r16(cpu, REG16_HL), val); break;
+        case REG8_A:
+            cpu->a = val; break;
     }
 }
 
 void write_r16(CPU *cpu, Reg16 reg, uint16_t val) {
-    uint8_t hi = (uint8_t)(val >> 8), lo = (uint8_t)val;
+    uint8_t hi = (uint8_t)(val >> 8);
+    uint8_t lo = (uint8_t)val;
 
     switch (reg) {
         case REG16_BC:
@@ -484,9 +560,9 @@ void add_hl_r16(CPU *cpu, Reg16 reg) {
 
     write_r16(cpu, REG16_HL, op1 + op2);
 
-    cpu->f &= 0x80;
-    cpu->f |= ((op1 & 0x00FF) + (op2 & 0x00FF) > 0x00FF) << FLAG_H;
-    cpu->f |= ((uint32_t)op1 + (uint32_t)op2 > 0xFFFF) << FLAG_C;
+    cpu->f = (cpu->f & 0x80) |
+        ((op1 & 0x00FF) + (op2 & 0x00FF) > 0x00FF) << FLAG_H |
+        ((uint32_t)op1 + (uint32_t)op2 > 0xFFFF) << FLAG_C;
 }
 
 void adc_a_r8(CPU *cpu, Reg8 reg) {
@@ -554,10 +630,10 @@ void dec_r8(CPU *cpu, Reg8 reg) {
 
     write_r8(cpu, reg, val - 1);
 
-    cpu->f &= 0x10;
-    cpu->f |= (val + 1 == 0x00) << FLAG_Z;
-    cpu->f |= 0x40;
-    cpu->f |= (0x01 > val) << FLAG_H;
+    cpu->f = (cpu->f & 0x10)
+        | (val + 1 == 0x00) << FLAG_Z
+        | 0x40
+        | (0x01 > val) << FLAG_H;
 }
 
 void inc_r8(CPU *cpu, Reg8 reg) {
@@ -565,9 +641,9 @@ void inc_r8(CPU *cpu, Reg8 reg) {
 
     write_r8(cpu, reg, val + 1);
 
-    cpu->f &= 0x10;
-    cpu->f |= (val - 1 == 0x00) << FLAG_Z;
-    cpu->f |= ((val & 0x0F) + 1 > 0x0F) << FLAG_H;
+    cpu->f = (cpu->f & 0x10)
+        | (val - 1 == 0x00) << FLAG_Z
+        | ((val & 0x0F) + 1 > 0x0F) << FLAG_H;
 }
 
 void dec_r16(CPU *cpu, Reg16 reg) {
@@ -854,7 +930,9 @@ void swap_r8(CPU *cpu, Reg8 reg) {
 }
 
 void bit_r8(CPU *cpu, uint8_t bit, Reg8 reg) {
-    cpu->f = (cpu->f & 0x10) | (0x20) | ((((read_r8(cpu, reg) >> bit) & 0x01) == 0x00) << FLAG_Z);
+    cpu->f = (cpu->f & 0x10)
+        | 0x20
+        | ((((read_r8(cpu, reg) >> bit) & 0x01) == 0x00) << FLAG_Z);
 }
 
 void res_r8(CPU *cpu, uint8_t bit, Reg8 reg) {

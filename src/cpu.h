@@ -6,7 +6,7 @@
 // NOTE:
 // The [hl] operand is treated like a register here
 // because it is encoded in opcodes as if it was one.
-// Keep in mind that 'r8' in function names also refers to [hl]
+// Keep in mind that 'r8' in function names also refers to [hl].
 typedef enum Reg8 {
     REG8_B = 0,
     REG8_C = 1,
@@ -27,10 +27,10 @@ typedef enum Reg16 {
 } Reg16;
 
 typedef enum Condition {
-    COND_NZ = 0,
-    COND_Z = 1,
-    COND_NC = 2,
-    COND_C = 3
+    CONDITION_NZ = 0,
+    CONDITION_Z = 1,
+    CONDITION_NC = 2,
+    CONDITION_C = 3
 } Condition;
 
 typedef enum Flag {
