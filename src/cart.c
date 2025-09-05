@@ -73,6 +73,10 @@ uint8_t cart_run() {
     while (emulator->should_close == 0) {
         while (SDL_PollEvent(&emulator->event)) cart_handle_events(emulator);
 
+        SDL_RenderClear(emulator->renderer);
+
+        SDL_SetRenderDrawColor(emulator->renderer, 0x00, 0xFF, 0xFF, 0x00);
+        SDL_RenderPresent(emulator->renderer);
     }
 
     destroy_emulator(emulator);
@@ -80,5 +84,5 @@ uint8_t cart_run() {
 }
 
 void cart_handle_events(Emulator *emu) {
-
+    if (emu->keys[SDL_SCANCODE_ESCAPE]) emu->should_close = 1;
 }

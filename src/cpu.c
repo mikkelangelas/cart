@@ -50,21 +50,16 @@ static inline void set_flags_roll_shift(CPU *cpu, uint8_t carry, uint8_t res) {
 
 static inline uint8_t evaluate_condition(CPU *cpu, Condition cond) {
     // thats how the condition can be checked directly from the opcode
-    return get_flag(cpu, 7 - (3 * (cond >> 1))) == (cond & 0x01);
+    return get_flag(cpu, FLAG_Z - (3 * (cond >> 1))) == (cond & 0x01);
 }
 
-static uint8_t pc_fetch_byte(CPU *cpu) {
+static inline uint8_t pc_fetch_byte(CPU *cpu) {
     return mmu_read(&cpu->gameboy->mmu, cpu->pc++);
 }
 
 
-static uint16_t pc_fetch_word(CPU *cpu) {
-    uint16_t val = 0x0000;
-
-    val |= mmu_read(&cpu->gameboy->mmu, cpu->pc++);
-    val |= mmu_read(&cpu->gameboy->mmu, cpu->pc++);
-
-    return val;
+static inline uint16_t pc_fetch_word(CPU *cpu) {
+    return (uint16_t)pc_fetch_byte(cpu) | ((uint16_t)pc_fetch_byte(cpu) << 8);
 }
 
 
@@ -855,6 +850,14 @@ void daa(CPU *cpu) {
     }
 
     cpu->f |= (cpu->a == 0x00) << FLAG_Z;
+}
+
+void pop_r16(CPU *cpu, Reg16 dest) {
+    write_r16(cpu, dest, pop_stack(cpu));
+}
+
+void push_r16(CPU *cpu, Reg16 src) {
+    push_stack(cpu, read_r16(cpu, src));
 }
 
 
