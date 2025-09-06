@@ -1,0 +1,4 @@
+- handling interrupts in cpu
+- drawing in ppu
+- stat updates in ppu
+- mbcs

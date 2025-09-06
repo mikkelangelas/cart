@@ -15,7 +15,7 @@ typedef struct Emulator {
 
     uint8_t should_close;
 
-    Gameboy *gameboy;
+    Gameboy *gb;
 } Emulator;
 
 Emulator *create_emulator();

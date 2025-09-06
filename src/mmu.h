@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 typedef struct MMU {
-    struct Gameboy *gameboy;
+    struct Gameboy *gb;
 } MMU;
 
 void mmu_init(MMU *mmu, struct Gameboy *gb);

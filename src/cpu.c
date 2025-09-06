@@ -1,7 +1,7 @@
 #include "cpu.h"
 
 #include "gameboy.h"
-#include "mmu.h"
+#include "util.h"
 #include <stdint.h>
 
 // --------------------------
@@ -9,7 +9,7 @@
 // --------------------------
 
 static inline uint8_t get_flag(CPU *cpu, Flag flag) {
-    return (cpu->f >> flag) & 0x01;
+    return get_bit(cpu->f, flag);
 }
 
 static inline void set_flags_sp_e8(CPU *cpu, uint8_t op) {
@@ -54,7 +54,7 @@ static inline uint8_t evaluate_condition(CPU *cpu, Condition cond) {
 }
 
 static inline uint8_t pc_fetch_byte(CPU *cpu) {
-    return mmu_read(&cpu->gameboy->mmu, cpu->pc++);
+    return mmu_read(&cpu->gb->mmu, cpu->pc++);
 }
 
 
@@ -78,16 +78,19 @@ void cpu_init(CPU *cpu, struct Gameboy *gb) {
         .sp = 0x0000,
         .ime = 0,
         .halted = 0,
-        .gameboy = gb
+        .gb = gb
     };
 }
 
 uint8_t cpu_step(CPU *cpu) {
-    // handling interrupts here
+    uint8_t cycles = cpu_handle_interrupts(cpu);
+
+    if (cycles > 0) return cycles;
+    if (cpu->halted == 1) return 1;
 
     uint8_t opcode = pc_fetch_byte(cpu);
 
-    uint8_t cycles = (opcode == 0xCB)
+    cycles = (opcode == 0xCB)
         ? cpu_execute(cpu, opcode)
         : cpu_execute_prefixed(cpu, pc_fetch_byte(cpu));
 
@@ -325,6 +328,27 @@ uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode) {
     return 0x01; // dummy value for now
 }
 
+uint8_t cpu_handle_interrupts(CPU *cpu) {
+    uint8_t int_flags = mmu_read(&cpu->gb->mmu, IF_ADDR);
+    uint8_t pending = mmu_read(&cpu->gb->mmu, IE_ADDR) & int_flags;
+
+    if (pending == 0) return 0;
+
+    cpu->halted = 0;
+
+    for (uint8_t i = 0; i < 5; i++) {
+        if (get_bit(pending, i) == 1) {
+            cpu->ime = 0;
+            set_bit(&int_flags, i, 0);
+            mmu_write(&cpu->gb->mmu, IF_ADDR, int_flags);
+            push_stack(cpu, cpu->pc);
+            cpu->pc = 0x0040 + (i << 3);
+        }
+    }
+
+    return 5;
+}
+
 uint8_t read_r8(CPU *cpu, Reg8 reg) {
     uint8_t val = 0x00;
 
@@ -342,7 +366,7 @@ uint8_t read_r8(CPU *cpu, Reg8 reg) {
         case REG8_L:
             val = cpu->l; break;
         case REG8_HLMEM:
-            val = mmu_read(&cpu->gameboy->mmu, read_r16(cpu, REG16_HL)); break;
+            val = mmu_read(&cpu->gb->mmu, read_r16(cpu, REG16_HL)); break;
         case REG8_A:
             val = cpu->a; break;
     }
@@ -392,7 +416,7 @@ void write_r8(CPU *cpu, Reg8 reg, uint8_t val) {
         case REG8_L:
             cpu->l = val; break;
         case REG8_HLMEM:
-            mmu_write(&cpu->gameboy->mmu, read_r16(cpu, REG16_HL), val); break;
+            mmu_write(&cpu->gb->mmu, read_r16(cpu, REG16_HL), val); break;
         case REG8_A:
             cpu->a = val; break;
     }
@@ -425,15 +449,15 @@ void write_r16(CPU *cpu, Reg16 reg, uint16_t val) {
 }
 
 void push_stack(CPU *cpu, uint16_t val) {
-    mmu_write(&cpu->gameboy->mmu, --cpu->sp, (uint8_t)(val >> 8));
-    mmu_write(&cpu->gameboy->mmu, --cpu->sp, (uint8_t)val);
+    mmu_write(&cpu->gb->mmu, --cpu->sp, (uint8_t)(val >> 8));
+    mmu_write(&cpu->gb->mmu, --cpu->sp, (uint8_t)val);
 }
 
 uint16_t pop_stack(CPU *cpu) {
     uint16_t val = 0x0000;
 
-    val |= mmu_read(&cpu->gameboy->mmu, cpu->sp++);
-    val |= mmu_read(&cpu->gameboy->mmu, cpu->sp++) << 8;
+    val |= mmu_read(&cpu->gb->mmu, cpu->sp++);
+    val |= mmu_read(&cpu->gb->mmu, cpu->sp++) << 8;
 
     return val;
 }
@@ -457,41 +481,41 @@ void ld_r16_n16(CPU *cpu, Reg16 dest, uint16_t val) {
 }
 
 void ld_r16mem_a(CPU *cpu, Reg16 dest) {
-    mmu_write(&cpu->gameboy->mmu, read_r16(cpu, dest), cpu->a);
+    mmu_write(&cpu->gb->mmu, read_r16(cpu, dest), cpu->a);
 }
 
 void ld_a16_a(CPU *cpu, uint16_t dest) {
-    mmu_write(&cpu->gameboy->mmu, dest, cpu->a);
+    mmu_write(&cpu->gb->mmu, dest, cpu->a);
 }
 
 void ld_a_r16mem(CPU *cpu, Reg16 src) {
-    cpu->a = mmu_read(&cpu->gameboy->mmu, read_r16(cpu, src));
+    cpu->a = mmu_read(&cpu->gb->mmu, read_r16(cpu, src));
 }
 
 void ld_a_a16(CPU *cpu, uint16_t src) {
-    cpu->a = mmu_read(&cpu->gameboy->mmu, src);
+    cpu->a = mmu_read(&cpu->gb->mmu, src);
 }
 
 void ldh_a8_a(CPU *cpu, uint8_t dest) {
-    mmu_write(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)dest, cpu->a);
+    mmu_write(&cpu->gb->mmu, 0xFF00 + (uint16_t)dest, cpu->a);
 }
 
 void ldh_cmem_a(CPU *cpu) {
-    mmu_write(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)cpu->c, cpu->a);
+    mmu_write(&cpu->gb->mmu, 0xFF00 + (uint16_t)cpu->c, cpu->a);
 }
 
 void ldh_a_a8(CPU *cpu, uint8_t src) {
-    cpu->a = mmu_read(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)src);
+    cpu->a = mmu_read(&cpu->gb->mmu, 0xFF00 + (uint16_t)src);
 }
 
 void ldh_a_cmem(CPU *cpu) {
-    cpu->a = mmu_read(&cpu->gameboy->mmu, 0xFF00 + (uint16_t)cpu->c);
+    cpu->a = mmu_read(&cpu->gb->mmu, 0xFF00 + (uint16_t)cpu->c);
 }
 
 void ldi_hlmem_a(CPU *cpu) {
     uint16_t hl = read_r16(cpu, REG16_HL);
 
-    mmu_write(&cpu->gameboy->mmu, hl, cpu->a);
+    mmu_write(&cpu->gb->mmu, hl, cpu->a);
 
     write_r16(cpu, REG16_HL, hl + 1);
 }
@@ -499,7 +523,7 @@ void ldi_hlmem_a(CPU *cpu) {
 void ldd_hlmem_a(CPU *cpu) {
     uint16_t hl = read_r16(cpu, REG16_HL);
 
-    mmu_write(&cpu->gameboy->mmu, hl, cpu->a);
+    mmu_write(&cpu->gb->mmu, hl, cpu->a);
 
     write_r16(cpu, REG16_HL, hl - 1);
 }
@@ -507,7 +531,7 @@ void ldd_hlmem_a(CPU *cpu) {
 void ldi_a_hlmem(CPU *cpu) {
     uint16_t hl = read_r16(cpu, REG16_HL);
 
-    cpu->a = mmu_read(&cpu->gameboy->mmu, hl);
+    cpu->a = mmu_read(&cpu->gb->mmu, hl);
 
     write_r16(cpu, REG16_HL, hl + 1);
 }
@@ -515,7 +539,7 @@ void ldi_a_hlmem(CPU *cpu) {
 void ldd_a_hlmem(CPU *cpu) {
     uint16_t hl = read_r16(cpu, REG16_HL);
 
-    cpu->a = mmu_read(&cpu->gameboy->mmu, hl);
+    cpu->a = mmu_read(&cpu->gb->mmu, hl);
 
     write_r16(cpu, REG16_HL, hl - 1);
 }
@@ -525,8 +549,8 @@ void ld_sp_n16(CPU *cpu, uint16_t val) {
 }
 
 void ld_a16_sp(CPU *cpu, uint16_t dest) {
-    mmu_write(&cpu->gameboy->mmu, dest, (uint8_t)cpu->sp);
-    mmu_write(&cpu->gameboy->mmu, dest + 1, (uint8_t)(cpu->sp >> 8));
+    mmu_write(&cpu->gb->mmu, dest, (uint8_t)cpu->sp);
+    mmu_write(&cpu->gb->mmu, dest + 1, (uint8_t)(cpu->sp >> 8));
 }
 
 void ld_hl_sp_e8(CPU *cpu, uint8_t val) {

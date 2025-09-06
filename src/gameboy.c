@@ -10,6 +10,13 @@
 Gameboy *create_gameboy(const char *rom_file) {
     Gameboy *new_gb = (Gameboy*)malloc(sizeof(Gameboy));
 
+    new_gb->cartridge = create_cartridge(rom_file);
+
+    if (new_gb->cartridge == NULL) {
+        destroy_gameboy(new_gb);
+        return NULL;
+    }
+
     cpu_init(&new_gb->cpu, new_gb);
     mmu_init(&new_gb->mmu, new_gb);
     ppu_init(&new_gb->ppu, new_gb);
@@ -22,8 +29,6 @@ Gameboy *create_gameboy(const char *rom_file) {
     memset(new_gb->io_registers, 0x00, IO_REGISTERS_SIZE);
     memset(new_gb->hram, 0x00, HRAM_SIZE);
     new_gb->ie = 0x00;
-
-    new_gb->cartridge = create_cartridge(rom_file);
 
     return new_gb;
 }
@@ -38,4 +43,8 @@ void destroy_gameboy(Gameboy *gb) {
 void gameboy_step(Gameboy *gb) {
     uint8_t cpu_cycles = cpu_step(&gb->cpu);
     ppu_step(&gb->ppu, cpu_cycles);
+}
+
+void gameboy_interrupt(Gameboy *gb, Interrupt intr) {
+    mmu_write(&gb->mmu, IF_ADDR, mmu_read(&gb->mmu, IF_ADDR) | (0x01 << intr));
 }

@@ -56,7 +56,7 @@ typedef struct CPU {
     uint8_t ime;
     uint8_t halted;
 
-    struct Gameboy *gameboy;
+    struct Gameboy *gb;
 } CPU;
 
 void cpu_init(CPU *cpu, struct Gameboy *gb);
@@ -65,6 +65,8 @@ uint8_t cpu_step(CPU *cpu);
 
 uint8_t cpu_execute(CPU *cpu, uint8_t opcode);
 uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode);
+
+uint8_t cpu_handle_interrupts(CPU *cpu);
 
 // helper functions
 

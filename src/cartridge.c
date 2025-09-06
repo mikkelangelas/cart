@@ -36,7 +36,7 @@ static CartridgeType get_cart_type(uint8_t code) {
 }
 
 static uint32_t get_cart_ram_size(uint8_t code) {
-    uint32_t size = 0;
+    uint32_t size = 0x00;
 
     switch (code) {
         case 0x00:
@@ -55,7 +55,7 @@ static uint32_t get_cart_ram_size(uint8_t code) {
 }
 
 static uint32_t get_cart_rom_size(uint8_t code) {
-    uint32_t size = 0;
+    uint32_t size = 0x00;
 
     switch(code) {
         case 0x00:
@@ -96,9 +96,14 @@ Cartridge *create_cartridge(const char *rom_file) {
     new_cart->rom_size = get_cart_rom_size(rom_buf[CART_ROM_SIZE_ADDR]);
     new_cart->ram_size = (new_cart->type != CART_TYPE_MBC2)
         ? get_cart_ram_size(rom_buf[CART_RAM_SIZE_ADDR])
-        : 512;
+        : 0x200;
 
     new_cart->ram = (uint8_t*)malloc(new_cart->ram_size);
+
+    new_cart->ram_enable = 0;
+    new_cart->primary_bank = 0x00;
+    new_cart->secondary_bank = 0x00;
+    new_cart->mbc1_advanced = 0;
 
     memset(new_cart->ram, 0, new_cart->ram_size);
 

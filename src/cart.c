@@ -46,7 +46,7 @@ Emulator *create_emulator() {
 
     new_emu->should_close = 0;
 
-    new_emu->gameboy = NULL;
+    new_emu->gb = NULL;
 
     return new_emu;
 }
@@ -59,7 +59,7 @@ void destroy_emulator(Emulator *emu) {
     SDL_DestroyWindow(emu->window);
     SDL_Quit();
     
-    destroy_gameboy(emu->gameboy);
+    destroy_gameboy(emu->gb);
 
     free(emu);
 }

@@ -19,6 +19,17 @@
 #define IO_REGISTERS_SIZE   (0xFF7F - 0xFF00 + 1)
 #define HRAM_SIZE           (0xFFFE - 0xFF80 + 1)
 
+#define IF_ADDR 0xFF0F
+#define IE_ADDR 0xFFFF
+
+typedef enum Interrupt {
+    INTERRUPT_VBLANK = 0,
+    INTERRUPT_LCD = 1,
+    INTERRUPT_TIMER = 2,
+    INTERRUPT_SERIAL = 3,
+    INTERRUPT_JOYPAD = 4
+} Interrupt;
+
 typedef struct Gameboy {
     // main components
     CPU cpu; 
@@ -43,5 +54,7 @@ Gameboy *create_gameboy(const char *rom_file);
 void destroy_gameboy(Gameboy *gb);
 
 void gameboy_step(Gameboy *gb);
+
+void gameboy_interrupt(Gameboy *gb, Interrupt intr);
 
 #endif
