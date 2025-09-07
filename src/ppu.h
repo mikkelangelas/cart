@@ -46,12 +46,14 @@ typedef struct PPU {
     uint8_t selected_objs[10];
     uint8_t num_objs;
 
-    struct Gameboy *gameboy;
+    struct Gameboy *gb;
 } PPU;
 
 void ppu_init(PPU *ppu, struct Gameboy *gb);
 
 void ppu_step(PPU *ppu, uint8_t cycles);
+
+void ppu_scan_oam(PPU *ppu);
 
 void ppu_draw_scanline(PPU *ppu);
 
