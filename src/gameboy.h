@@ -24,8 +24,8 @@
 
 typedef enum Interrupt {
     INTERRUPT_VBLANK = 0,
-    INTERRUPT_LCD = 1,
-    INTERRUPT_TIMER = 2,
+    INTERRUPT_STAT   = 1,
+    INTERRUPT_TIMER  = 2,
     INTERRUPT_SERIAL = 3,
     INTERRUPT_JOYPAD = 4
 } Interrupt;
