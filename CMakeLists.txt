@@ -4,19 +4,12 @@ project(cart)
 
 add_executable(cart
     src/main.c
-    src/cart.h
     src/cart.c
-    src/gameboy.h
     src/gameboy.c
-    src/cpu.h
     src/cpu.c
-    src/mmu.h
     src/mmu.c
-    src/ppu.h
     src/ppu.c
-    src/cartridge.h
     src/cartridge.c
-    src/util.h
     src/util.c
 )
 

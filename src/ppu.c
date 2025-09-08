@@ -39,10 +39,10 @@ static uint8_t fetch_pixel_color(PPU *ppu, uint16_t pal_addr, uint16_t row_data,
 void ppu_init(PPU *ppu, struct Gameboy *gb) {
     *ppu = (PPU){
         .mode = PPU_MODE_OAM_SCAN,
-        .current_dot = 0x00,
-        .current_line = 0x00,
-        .selected_objs = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},
-        .num_objs = 0x00,
+        .current_dot = 0,
+        .current_line = 0,
+        .selected_objs = {0,0,0,0,0,0,0,0,0,0},
+        .num_objs = 0,
         .gb = gb
     };
 }
@@ -53,7 +53,7 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
     // an emulator?
     uint8_t lcdc = mmu_read(&ppu->gb->mmu, LCDC_ADDR);
 
-    if ((lcdc & LCDC_LCD_PPU_ENABLE_MASK) == 0x00) return;
+    if ((lcdc & LCDC_LCD_PPU_ENABLE_MASK) == 0) return;
 
     for (uint8_t d = 0; d <= (cycles * DOTS_PER_CYCLE_DMG); d++) {
         ppu->current_dot++;
@@ -63,7 +63,7 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
                 if (ppu->current_dot == OAM_SCAN_DOTS) {
                     ppu_scan_oam(ppu, lcdc);
                     ppu->mode = PPU_MODE_PIXEL_DRAW;
-                    ppu->current_dot = 0x00;
+                    ppu->current_dot = 0;
                 }
                 break;
 
@@ -71,7 +71,7 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
                 if (ppu->current_dot == PIXEL_DRAW_DOTS) {
                     ppu_draw_scanline(ppu, lcdc);
                     ppu->mode = PPU_MODE_HBLANK;
-                    ppu->current_dot = 0x00;
+                    ppu->current_dot = 0;
                 }
                 break;
 
@@ -80,8 +80,9 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
                    ppu->mode = (ppu->current_line == 143)
                        ? PPU_MODE_VBLANK
                        : PPU_MODE_OAM_SCAN;
-                   ppu->current_dot = 0x00;
+                   ppu->current_dot = 0;
                    ppu->current_line++;
+                   mmu_write(&ppu->gb->mmu, LY_ADDR, ppu->current_line);
                 }
                 break;
 
@@ -94,8 +95,9 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
 
                 if (ppu->current_dot == VBLANK_DOTS) {
                     ppu->mode = PPU_MODE_OAM_SCAN;
-                    ppu->current_dot = 0x00;
-                    ppu->current_line = 0x00;
+                    ppu->current_dot = 0;
+                    ppu->current_line = 0;
+                    mmu_write(&ppu->gb->mmu, LY_ADDR, 0);
                 }
                 break;
         }
@@ -188,6 +190,7 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
 
         uint8_t tile_idx = mmu_read(&ppu->gb->mmu, map_addr + (map_y * MAP_SIZE_TILES) + map_x);
 
+        // prevents refetching tile data for every pixel
         if (tile_idx != last_tile_idx || wind_x == 0) {
             last_tile_idx = tile_idx;
             tile_data = fetch_tile_row_data(ppu, tiles_addr, tile_idx, tile_y);
