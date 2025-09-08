@@ -21,6 +21,10 @@
 #define LY_ADDR   0xFF44
 #define LYC_ADDR  0xFF45
 
+#define BGP_ADDR  0xFF47
+#define OBP0_ADDR 0xFF48
+#define OBP1_ADDR 0xFF49
+
 // it's better to test a bit with an AND
 #define LCDC_BG_WIND_ENABLE_MASK 0x01
 #define LCDC_OBJ_ENABLE_MASK     0x02
@@ -40,8 +44,13 @@
 #define STAT_MODE1_INT_CHECK 0x11
 #define STAT_MODE2_INT_CHECK 0x22
 
+#define TILE_SIZE 8
+
 #define OBJ_HEIGHT_SHORT 8
 #define OBJ_HEIGHT_TALL 16
+
+#define MAP_SIZE_TILES 32
+#define MAP_SIZE_PIXELS 256
 
 typedef enum PPUMode {
     PPU_MODE_HBLANK     = 0,

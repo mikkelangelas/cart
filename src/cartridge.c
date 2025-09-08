@@ -81,6 +81,48 @@ static uint32_t get_cart_rom_size(uint8_t code) {
     return size;
 }
 
+static uint8_t cartridge_read_no_mbc(Cartridge *cart, uint16_t addr) {
+    uint16_t val = 0xFF;
+
+    if (addr <= 0x7FFF && addr < cart->rom_size)
+        val = cart->rom[addr];
+    else if (0xA000 <= addr && addr <= 0xBFFF && (addr - 0xA000) < cart->ram_size)
+        val = cart->ram[addr - 0xA000];
+
+    return val;
+}
+
+static uint8_t cartridge_read_mbc1(Cartridge *cart, uint16_t addr) {
+
+}
+
+static uint8_t cartridge_read_mbc2(Cartridge *cart, uint16_t addr) {
+
+}
+
+static uint8_t cartridge_read_mbc3(Cartridge *cart, uint16_t addr) {
+
+}
+
+static void cartridge_write_no_mbc(Cartridge *cart, uint16_t addr, uint8_t val) {
+    if (0xA000 <= addr && addr <= 0xBFFF && (addr - 0xA000) <= cart->ram_size)
+        cart->ram[addr - 0xA000] = val;
+}
+
+static void cartridge_write_mbc1(Cartridge *cart, uint16_t addr, uint8_t val) {
+
+}
+
+static void cartridge_write_mbc2(Cartridge *cart, uint16_t addr, uint8_t val) {
+
+}
+
+static void cartridge_write_mbc3(Cartridge *cart, uint16_t addr, uint8_t val) {
+
+}
+
+
+
 Cartridge *create_cartridge(const char *rom_file) {
     Cartridge *new_cart = (Cartridge*)malloc(sizeof(Cartridge));
 
@@ -122,22 +164,31 @@ uint8_t cartridge_read(Cartridge *cart, uint16_t addr) {
     uint8_t val = 0xFF;
 
     switch (cart->type) {
-        case CART_TYPE_NO_MBC: break;
-        case CART_TYPE_MBC1: break;
-        case CART_TYPE_MBC2: break;
-        case CART_TYPE_MBC3: break;
+        case CART_TYPE_NO_MBC:
+            val = cartridge_read_no_mbc(cart, addr); break;
+        case CART_TYPE_MBC1:
+            val = cartridge_read_mbc1(cart, addr); break;
+        case CART_TYPE_MBC2:
+            val = cartridge_read_mbc2(cart, addr); break;
+        case CART_TYPE_MBC3:
+            val = cartridge_read_mbc3(cart, addr); break;
         case CART_TYPE_UNKNOWN: break;
     }
 
     return val;
 }
 
+
 void cartridge_write(Cartridge *cart, uint16_t addr, uint8_t val) {
     switch (cart->type) {
-        case CART_TYPE_NO_MBC: break;
-        case CART_TYPE_MBC1: break;
-        case CART_TYPE_MBC2: break;
-        case CART_TYPE_MBC3: break;
+        case CART_TYPE_NO_MBC:
+            cartridge_write_no_mbc(cart, addr, val); break;
+        case CART_TYPE_MBC1:
+            cartridge_write_mbc1(cart, addr, val); break;
+        case CART_TYPE_MBC2:
+            cartridge_write_mbc2(cart, addr, val); break;
+        case CART_TYPE_MBC3:
+            cartridge_write_mbc3(cart, addr, val); break;
         case CART_TYPE_UNKNOWN: return;
     }
 }

@@ -46,6 +46,7 @@ Cartridge *create_cartridge(const char *rom_file);
 void destroy_cartridge(Cartridge *cart);
 
 uint8_t cartridge_read(Cartridge *cart, uint16_t addr);
+
 void cartridge_write(Cartridge *cart, uint16_t addr, uint8_t val);
 
 #endif
