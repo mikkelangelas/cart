@@ -25,6 +25,9 @@
 #define OBP0_ADDR 0xFF48
 #define OBP1_ADDR 0xFF49
 
+#define WY_ADDR   0xFF4A
+#define WX_ADDR   0xFF4B
+
 // it's better to test a bit with an AND
 #define LCDC_BG_WIND_ENABLE_MASK 0x01
 #define LCDC_OBJ_ENABLE_MASK     0x02

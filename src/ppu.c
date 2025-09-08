@@ -166,7 +166,37 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
 }
 
 void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
+    uint16_t tiles_addr = (lcdc & LCDC_BG_WIND_TILES_MASK) ? 0x8000 : 0x8800;
+    uint16_t map_addr = (lcdc & LCDC_WIND_TILE_MAP_MASK) ? 0x9C00 : 0x9B00;
 
+    uint8_t wx = mmu_read(&ppu->gb->mmu, WX_ADDR);
+    uint8_t wind_y = mmu_read(&ppu->gb->mmu, WY_ADDR) + ppu->current_line;
+
+    if (wx >= GB_SCREEN_H + 7 || wind_y >= GB_SCREEN_W) return;
+
+    uint8_t map_y = wind_y / MAP_SIZE_TILES;
+    uint8_t tile_y = wind_y % TILE_SIZE;
+
+    uint8_t last_tile_idx = 0;
+    uint16_t tile_data = 0;
+
+    for (uint8_t wind_x = wx; wind_x < GB_SCREEN_W; wind_x++) {
+        if (wind_x < 7) continue;
+
+        uint8_t map_x = wind_x / MAP_SIZE_TILES;
+        uint8_t tile_x = wind_x % TILE_SIZE;
+
+        uint8_t tile_idx = mmu_read(&ppu->gb->mmu, map_addr + (map_y * MAP_SIZE_TILES) + map_x);
+
+        if (tile_idx != last_tile_idx || wind_x == 0) {
+            last_tile_idx = tile_idx;
+            tile_data = fetch_tile_row_data(ppu, tiles_addr, tile_idx, tile_y);
+        }
+
+        uint8_t color = fetch_pixel_color(ppu, BGP_ADDR, tile_data, tile_x);
+
+        ppu->gb->framebuffer[ppu->current_line * GB_SCREEN_W + (wind_x - 7)] = color;
+    }
 }
 
 void ppu_draw_obj_line(PPU *ppu, uint8_t lcdc) {
