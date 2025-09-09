@@ -5,7 +5,7 @@ project(cart)
 add_executable(cart
     src/main.c
     src/cart.c
-    src/gameboy.c
+    src/gb.c
     src/cpu.c
     src/mmu.c
     src/ppu.c

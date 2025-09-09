@@ -1,8 +1,13 @@
 #include "ppu.h"
 
-#include "gameboy.h"
+#include "gb.h"
 #include "util.h"
 #include <stdio.h>
+
+static inline void next_scanline(PPU *ppu) {
+    ppu->current_line++;
+    mmu_write(&ppu->gb->mmu, LY_ADDR, ppu->current_line);
+}
 
 static uint16_t fetch_tile_row_data(PPU *ppu, uint16_t addr, uint8_t idx, uint8_t y) {
     if (addr == 0x8800) idx -= 128;
@@ -83,8 +88,7 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
                         ? PPU_MODE_VBLANK
                         : PPU_MODE_OAM_SCAN;
                     ppu->current_dot = 0;
-                    ppu->current_line++;
-                    mmu_write(&ppu->gb->mmu, LY_ADDR, ppu->current_line);
+                    next_scanline(ppu);
                 }
                 break;
 
@@ -95,7 +99,7 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
                 }
 
                 if (ppu->current_dot % DOTS_PER_LINE == 0)
-                    ppu->current_line++;
+                    next_scanline(ppu);
 
                 if (ppu->current_dot == VBLANK_DOTS) {
                     ppu->mode = PPU_MODE_OAM_SCAN;
@@ -223,7 +227,7 @@ void ppu_update_stat(PPU *ppu) {
             (stat & STAT_MODE0_INT_MASK) == STAT_MODE0_INT_CHECK ||
             (stat & STAT_MODE1_INT_MASK) == STAT_MODE1_INT_CHECK ||
             (stat & STAT_MODE2_INT_MASK) == STAT_MODE2_INT_CHECK)
-            gameboy_interrupt(ppu->gb, INTERRUPT_STAT);
+            gb_interrupt(ppu->gb, INTERRUPT_STAT);
 
     }
 

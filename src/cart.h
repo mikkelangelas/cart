@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <SDL3/SDL.h>
 
-#include "gameboy.h"
+#include "gb.h"
 
 typedef struct Emulator {
     SDL_Window *window;
@@ -15,7 +15,7 @@ typedef struct Emulator {
 
     uint8_t should_close;
 
-    Gameboy *gb;
+    GB *gb;
 } Emulator;
 
 Emulator *create_emulator();

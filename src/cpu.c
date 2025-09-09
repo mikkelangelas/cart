@@ -1,6 +1,6 @@
 #include "cpu.h"
 
-#include "gameboy.h"
+#include "gb.h"
 #include "util.h"
 #include "opcodes.h"
 #include <stdio.h>
@@ -62,8 +62,8 @@ static inline uint8_t evaluate_condition(CPU *cpu, Condition cond) {
 static inline uint8_t pc_fetch_byte(CPU *cpu) {
     uint8_t byte = mmu_read(&cpu->gb->mmu, cpu->pc++);
 
-    //printf("%x ", cpu->pc - 1);
-    //printf("fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
+    printf("%x ", cpu->pc - 1);
+    printf("fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
     return byte; 
 }
 
@@ -74,7 +74,7 @@ static inline uint16_t pc_fetch_word(CPU *cpu) {
 
 
 
-void cpu_init(CPU *cpu, struct Gameboy *gb) {
+void cpu_init(CPU *cpu, struct GB *gb) {
     *cpu = (CPU){
         .a = 0x00,
         .f = 0x00,
@@ -354,6 +354,8 @@ uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode) {
 }
 
 uint8_t cpu_handle_interrupts(CPU *cpu) {
+    if (cpu->ime == 0) return 0;
+
     uint8_t int_flags = mmu_read(&cpu->gb->mmu, IF_ADDR);
     uint8_t pending = mmu_read(&cpu->gb->mmu, IE_ADDR) & int_flags;
 

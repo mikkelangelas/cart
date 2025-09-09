@@ -30,7 +30,7 @@ typedef enum Interrupt {
     INTERRUPT_JOYPAD = 4
 } Interrupt;
 
-typedef struct Gameboy {
+typedef struct GB {
     // main components
     CPU cpu; 
     MMU mmu;
@@ -48,14 +48,14 @@ typedef struct Gameboy {
     uint8_t ie;
 
     Cartridge *cartridge;
-} Gameboy;
+} GB;
 
-Gameboy *create_gameboy(const char *rom_file);
+GB *create_gb(const char *rom_file);
 
-void destroy_gameboy(Gameboy *gb);
+void destroy_gb(GB *gb);
 
-void gameboy_step(Gameboy *gb);
+void gb_step(GB *gb);
 
-void gameboy_interrupt(Gameboy *gb, Interrupt intr);
+void gb_interrupt(GB *gb, Interrupt intr);
 
 #endif

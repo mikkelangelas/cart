@@ -56,10 +56,10 @@ typedef struct CPU {
     uint8_t ime;
     uint8_t halted;
 
-    struct Gameboy *gb;
+    struct GB *gb;
 } CPU;
 
-void cpu_init(CPU *cpu, struct Gameboy *gb);
+void cpu_init(CPU *cpu, struct GB *gb);
 
 uint8_t cpu_step(CPU *cpu);
 

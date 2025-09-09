@@ -1,4 +1,4 @@
-#include "gameboy.h"
+#include "gb.h"
 #include "cartridge.h"
 #include "cpu.h"
 #include "mmu.h"
@@ -7,13 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-Gameboy *create_gameboy(const char *rom_file) {
-    Gameboy *new_gb = (Gameboy*)malloc(sizeof(Gameboy));
+GB *create_gb(const char *rom_file) {
+    GB *new_gb = (GB*)malloc(sizeof(GB));
 
     new_gb->cartridge = create_cartridge(rom_file);
 
     if (new_gb->cartridge == NULL) {
-        destroy_gameboy(new_gb);
+        destroy_gb(new_gb);
         return NULL;
     }
 
@@ -34,18 +34,18 @@ Gameboy *create_gameboy(const char *rom_file) {
     return new_gb;
 }
 
-void destroy_gameboy(Gameboy *gb) {
+void destroy_gb(GB *gb) {
     if (gb == NULL) return;
 
     destroy_cartridge(gb->cartridge);
     free(gb);
 }
 
-void gameboy_step(Gameboy *gb) {
+void gb_step(GB *gb) {
     uint8_t cpu_cycles = cpu_step(&gb->cpu);
     ppu_step(&gb->ppu, cpu_cycles);
 }
 
-void gameboy_interrupt(Gameboy *gb, Interrupt intr) {
+void gb_interrupt(GB *gb, Interrupt intr) {
     mmu_write(&gb->mmu, IF_ADDR, mmu_read(&gb->mmu, IF_ADDR) | (0x01 << intr));
 }

@@ -46,7 +46,7 @@ Emulator *create_emulator() {
 
     new_emu->should_close = 0;
 
-    new_emu->gb = create_gameboy("test.gb");
+    new_emu->gb = create_gb("test.gb");
 
     if (new_emu->gb == NULL) printf("sraka");
 
@@ -61,7 +61,7 @@ void destroy_emulator(Emulator *emu) {
     SDL_DestroyWindow(emu->window);
     SDL_Quit();
     
-    destroy_gameboy(emu->gb);
+    destroy_gb(emu->gb);
 
     free(emu);
 }
@@ -77,7 +77,7 @@ uint8_t cart_run() {
 
         if (emulator->gb == NULL) continue;
 
-        gameboy_step(emulator->gb);
+        gb_step(emulator->gb);
 
         if (emulator->gb->frame_ready == 1) cart_render(emulator);
     }
