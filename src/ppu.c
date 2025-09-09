@@ -2,6 +2,7 @@
 
 #include "gameboy.h"
 #include "util.h"
+#include <stdio.h>
 
 static uint16_t fetch_tile_row_data(PPU *ppu, uint16_t addr, uint8_t idx, uint8_t y) {
     if (addr == 0x8800) idx -= 128;
@@ -55,6 +56,7 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
 
     if ((lcdc & LCDC_LCD_PPU_ENABLE_MASK) == 0) return;
 
+
     for (uint8_t d = 0; d <= (cycles * DOTS_PER_CYCLE_DMG); d++) {
         ppu->current_dot++;
 
@@ -77,18 +79,20 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
 
             case PPU_MODE_HBLANK:
                 if (ppu->current_dot == HBLANK_DOTS) {
-                   ppu->mode = (ppu->current_line == 143)
-                       ? PPU_MODE_VBLANK
-                       : PPU_MODE_OAM_SCAN;
-                   ppu->current_dot = 0;
-                   ppu->current_line++;
-                   mmu_write(&ppu->gb->mmu, LY_ADDR, ppu->current_line);
+                    ppu->mode = (ppu->current_line == 143)
+                        ? PPU_MODE_VBLANK
+                        : PPU_MODE_OAM_SCAN;
+                    ppu->current_dot = 0;
+                    ppu->current_line++;
+                    mmu_write(&ppu->gb->mmu, LY_ADDR, ppu->current_line);
                 }
                 break;
 
             case PPU_MODE_VBLANK:
-                if (ppu->current_dot == 1)
+                if (ppu->current_dot == 1) {
                     gameboy_interrupt(ppu->gb, INTERRUPT_VBLANK);
+                    ppu->gb->frame_ready = 1;
+                }
 
                 if (ppu->current_dot % DOTS_PER_LINE == 0)
                     ppu->current_line++;
@@ -132,8 +136,8 @@ void ppu_draw_scanline(PPU *ppu, uint8_t lcdc) {
 }
 
 void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
-    uint16_t tiles_addr = (lcdc & LCDC_BG_WIND_TILES_MASK) ? 0x8000 : 0x8000;
-    uint16_t map_addr = (lcdc & LCDC_BG_TILE_MAP_MASK) ? 0x9C00 : 0x9B00;
+    uint16_t tiles_addr = (lcdc & LCDC_BG_WIND_TILES_MASK) ? 0x8000 : 0x8800;
+    uint16_t map_addr = (lcdc & LCDC_BG_TILE_MAP_MASK) ? 0x9C00 : 0x9800;
 
     uint8_t scx = mmu_read(&ppu->gb->mmu, SCX_ADDR);
 
@@ -142,7 +146,7 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
     // no need to use % 256 for wrapping scrolled_y around 
     // because it's 8-bit so it will naturally happen
     // in case an overflow occurs
-    uint8_t map_y = scrolled_y / MAP_SIZE_TILES; 
+    uint8_t map_y = scrolled_y / TILE_SIZE; 
     uint8_t tile_y = scrolled_y % TILE_SIZE;
 
     uint8_t last_tile_idx = 0;
@@ -150,7 +154,7 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
 
     for (uint8_t screen_x = 0; screen_x < GB_SCREEN_W; screen_x++) {
         uint8_t scrolled_x = scx + screen_x; 
-        uint8_t map_x = scrolled_x / MAP_SIZE_TILES;
+        uint8_t map_x = scrolled_x / TILE_SIZE;
         uint8_t tile_x = scrolled_x % TILE_SIZE;
 
         uint8_t tile_idx = mmu_read(&ppu->gb->mmu, map_addr + (map_y * MAP_SIZE_TILES) + map_x);
@@ -162,6 +166,7 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
         }
 
         uint8_t color = fetch_pixel_color(ppu, BGP_ADDR, tile_data, tile_x);
+        //printf("sy: %d sx: %d my: %d mx: %d ty: %d tx: %d tidx: %d color: %d\n", scrolled_y, scrolled_x, map_y, map_x, tile_y, tile_x, tile_idx, color);
 
         ppu->gb->framebuffer[ppu->current_line * GB_SCREEN_W + screen_x] = color;
     }
@@ -169,14 +174,14 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
 
 void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
     uint16_t tiles_addr = (lcdc & LCDC_BG_WIND_TILES_MASK) ? 0x8000 : 0x8800;
-    uint16_t map_addr = (lcdc & LCDC_WIND_TILE_MAP_MASK) ? 0x9C00 : 0x9B00;
+    uint16_t map_addr = (lcdc & LCDC_WIND_TILE_MAP_MASK) ? 0x9C00 : 0x9800;
 
     uint8_t wx = mmu_read(&ppu->gb->mmu, WX_ADDR);
     uint8_t wind_y = mmu_read(&ppu->gb->mmu, WY_ADDR) + ppu->current_line;
 
     if (wx >= GB_SCREEN_H + 7 || wind_y >= GB_SCREEN_W) return;
 
-    uint8_t map_y = wind_y / MAP_SIZE_TILES;
+    uint8_t map_y = wind_y / TILE_SIZE;
     uint8_t tile_y = wind_y % TILE_SIZE;
 
     uint8_t last_tile_idx = 0;
@@ -185,7 +190,7 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
     for (uint8_t wind_x = wx; wind_x < GB_SCREEN_W; wind_x++) {
         if (wind_x < 7) continue;
 
-        uint8_t map_x = wind_x / MAP_SIZE_TILES;
+        uint8_t map_x = wind_x / TILE_SIZE;
         uint8_t tile_x = wind_x % TILE_SIZE;
 
         uint8_t tile_idx = mmu_read(&ppu->gb->mmu, map_addr + (map_y * MAP_SIZE_TILES) + map_x);
@@ -222,5 +227,5 @@ void ppu_update_stat(PPU *ppu) {
 
     }
 
-    mmu_write(&ppu->gb->mmu, STAT_ADDR);
+    mmu_write(&ppu->gb->mmu, STAT_ADDR, stat);
 }

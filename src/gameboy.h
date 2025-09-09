@@ -37,6 +37,7 @@ typedef struct Gameboy {
     PPU ppu;
 
     uint8_t framebuffer[GB_SCREEN_W * GB_SCREEN_H];
+    uint8_t frame_ready;
 
     // specific memory areas
     uint8_t vram[VRAM_SIZE];

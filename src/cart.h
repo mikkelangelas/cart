@@ -26,4 +26,6 @@ uint8_t cart_run();
 
 void cart_handle_events(Emulator *emu);
 
+void cart_render(Emulator *emu);
+
 #endif

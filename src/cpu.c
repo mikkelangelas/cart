@@ -2,7 +2,12 @@
 
 #include "gameboy.h"
 #include "util.h"
+#include "opcodes.h"
+#include <stdio.h>
 #include <stdint.h>
+
+extern inline uint8_t get_bit(uint8_t src, uint8_t bit);
+extern inline void set_bit(uint8_t *dest, uint8_t bit, uint8_t val);
 
 // --------------------------
 //      helper functions
@@ -20,14 +25,14 @@ static inline void set_flags_sp_e8(CPU *cpu, uint8_t op) {
 
 static inline void set_flags_addition(CPU *cpu, uint8_t op1, uint8_t op2) {
     cpu->f = 0x00
-        | (op1 + op2 == 0x00) << FLAG_Z
+        | ((uint8_t)(op1 + op2) == 0x00) << FLAG_Z
         | ((op1 & 0x0F) + (op2 & 0x0F) > 0x0F) << FLAG_H
         | ((uint16_t)op1 + (uint16_t)op2 > 0x00FF) << FLAG_C;
 }
 
 static inline void set_flags_subtraction(CPU *cpu, uint8_t op1, uint8_t op2) {
     cpu->f = 0x40 
-        | (op1 - op2 == 0x00) << FLAG_Z
+        | ((uint8_t)(op1 - op2) == 0x00) << FLAG_Z
         | ((op2 & 0x0F) > (op1 & 0x0F)) << FLAG_H
         | (op2 > op1) << FLAG_C;
 }
@@ -51,10 +56,15 @@ static inline void set_flags_roll_shift(CPU *cpu, uint8_t carry, uint8_t res) {
 static inline uint8_t evaluate_condition(CPU *cpu, Condition cond) {
     // thats how the condition can be checked directly from the opcode
     return get_flag(cpu, FLAG_Z - (3 * (cond >> 1))) == (cond & 0x01);
+
 }
 
 static inline uint8_t pc_fetch_byte(CPU *cpu) {
-    return mmu_read(&cpu->gb->mmu, cpu->pc++);
+    uint8_t byte = mmu_read(&cpu->gb->mmu, cpu->pc++);
+
+    //printf("%x ", cpu->pc - 1);
+    //printf("fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
+    return byte; 
 }
 
 
@@ -90,7 +100,7 @@ uint8_t cpu_step(CPU *cpu) {
 
     uint8_t opcode = pc_fetch_byte(cpu);
 
-    cycles = (opcode == 0xCB)
+    cycles = (opcode != 0xCB)
         ? cpu_execute(cpu, opcode)
         : cpu_execute_prefixed(cpu, pc_fetch_byte(cpu));
 
@@ -128,12 +138,13 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                         ld_r16mem_a(cpu, (opcode >> 4) & 0x03); break;
                     case 0x22:
                         ldi_hlmem_a(cpu); break;
-                    case 0x23:
+                    case 0x32:
                         ldd_hlmem_a(cpu); break;
                 }
                 break;
 
-            case 0x03: inc_r16(cpu, (opcode >> 4) & 0x03); break;
+            case 0x03:
+                inc_r16(cpu, (opcode >> 4) & 0x03); break;
 
             case 0x04:
             case 0x0C:
@@ -300,10 +311,24 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
 
             case 0x0D:
                 call_a16(cpu, pc_fetch_word(cpu)); break;
+
+            case 0x0E:
+                switch (opcode) {
+                    case 0xCE:
+                        adc_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xDE:
+                        sbc_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xEE:
+                        xor_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                    case 0xFE:
+                        cp_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                }
+
+                break;
         }
     }
 
-    return 0x01 + extra_cycles; // dummy value for now
+    return OPCODES_DURATION[opcode] + extra_cycles;
 }
 
 uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode) {
@@ -325,7 +350,7 @@ uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode) {
         else if (opcode <= 0xFF) set_r8(cpu, bit, reg);
     }
 
-    return 0x01; // dummy value for now
+    return PREFIXED_OPCODES_DURATION; 
 }
 
 uint8_t cpu_handle_interrupts(CPU *cpu) {
@@ -434,6 +459,7 @@ void write_r16(CPU *cpu, Reg16 reg, uint16_t val) {
         case REG16_DE:
             cpu->d = hi;
             cpu->e = lo;
+            break;
         case REG16_HL:
             cpu->h = hi;
             cpu->l = lo;
@@ -650,7 +676,7 @@ void dec_r8(CPU *cpu, Reg8 reg) {
     write_r8(cpu, reg, val - 1);
 
     cpu->f = (cpu->f & 0x10)
-        | (val + 1 == 0x00) << FLAG_Z
+        | ((uint8_t)(val - 1) == 0x00) << FLAG_Z
         | 0x40
         | (0x01 > val) << FLAG_H;
 }
@@ -661,7 +687,7 @@ void inc_r8(CPU *cpu, Reg8 reg) {
     write_r8(cpu, reg, val + 1);
 
     cpu->f = (cpu->f & 0x10)
-        | (val - 1 == 0x00) << FLAG_Z
+        | ((uint8_t)(val + 1) == 0x00) << FLAG_Z
         | ((val & 0x0F) + 1 > 0x0F) << FLAG_H;
 }
 

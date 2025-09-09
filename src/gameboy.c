@@ -21,7 +21,8 @@ Gameboy *create_gameboy(const char *rom_file) {
     mmu_init(&new_gb->mmu, new_gb);
     ppu_init(&new_gb->ppu, new_gb);
 
-    memset(new_gb->framebuffer, 0x00, GB_SCREEN_W * GB_SCREEN_H);
+    memset(new_gb->framebuffer, 0x03, GB_SCREEN_W * GB_SCREEN_H);
+    new_gb->frame_ready = 0;
 
     memset(new_gb->vram, 0x00, VRAM_SIZE);
     memset(new_gb->wram, 0x00, WRAM_SIZE);

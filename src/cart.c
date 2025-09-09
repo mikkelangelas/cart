@@ -46,7 +46,9 @@ Emulator *create_emulator() {
 
     new_emu->should_close = 0;
 
-    new_emu->gb = NULL;
+    new_emu->gb = create_gameboy("test.gb");
+
+    if (new_emu->gb == NULL) printf("sraka");
 
     return new_emu;
 }
@@ -73,10 +75,11 @@ uint8_t cart_run() {
     while (emulator->should_close == 0) {
         while (SDL_PollEvent(&emulator->event)) cart_handle_events(emulator);
 
-        SDL_RenderClear(emulator->renderer);
+        if (emulator->gb == NULL) continue;
 
-        SDL_SetRenderDrawColor(emulator->renderer, 0x00, 0xFF, 0xFF, 0x00);
-        SDL_RenderPresent(emulator->renderer);
+        gameboy_step(emulator->gb);
+
+        if (emulator->gb->frame_ready == 1) cart_render(emulator);
     }
 
     destroy_emulator(emulator);
@@ -85,4 +88,38 @@ uint8_t cart_run() {
 
 void cart_handle_events(Emulator *emu) {
     if (emu->keys[SDL_SCANCODE_ESCAPE]) emu->should_close = 1;
+}
+
+void cart_render(Emulator *emu) {
+    void *pixels = NULL;
+    int pitch = 0;
+
+    SDL_LockTexture(emu->screen_texture, NULL, &pixels, &pitch);
+
+    Uint32 *pixels_dest = (Uint32*)pixels;
+
+    const SDL_PixelFormatDetails *format=
+        SDL_GetPixelFormatDetails(SDL_GetWindowPixelFormat(emu->window));
+
+    for (uint16_t p = 0; p < (GB_SCREEN_W * GB_SCREEN_H); p++) {
+        switch (emu->gb->framebuffer[p]) {
+            case 0:
+                pixels_dest[p] = SDL_MapRGB(format, NULL, 255, 255, 255); break;
+            case 1:
+                pixels_dest[p] = SDL_MapRGB(format, NULL, 170, 170, 170); break;
+            case 2:
+                pixels_dest[p] = SDL_MapRGB(format, NULL, 85, 85, 85); break;
+            case 3:
+                pixels_dest[p] = SDL_MapRGB(format, NULL, 0, 0, 0); break;
+        }
+    }
+
+    emu->gb->frame_ready = 0;
+
+    SDL_UnlockTexture(emu->screen_texture);
+
+    SDL_SetRenderDrawColor(emu->renderer, 255, 255, 0, 255);
+    SDL_RenderClear(emu->renderer);
+    SDL_RenderTexture(emu->renderer, emu->screen_texture, NULL, NULL);
+    SDL_RenderPresent(emu->renderer);
 }
