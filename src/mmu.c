@@ -13,53 +13,86 @@ void mmu_init(MMU *mmu, struct GB *gb) {
 }
 
 uint8_t mmu_read(MMU *mmu, uint16_t addr) {
-    // TODO -> optimize this
     uint8_t val = 0xFF;
 
-    if (0x0000 <= addr && addr <= 0x7FFF) {
-        if (mmu->bootrom_mapped == 1 && addr < 0x0100)
-            val = DMG_BOOTROM[addr];
-        else
-            val = cartridge_read(mmu->gb->cartridge, addr);
+    switch (addr & 0xF000) {
+        case 0x0000:
+            if (mmu->bootrom_mapped == 1 && addr < 0x0100) {
+                val = DMG_BOOTROM[addr];
+                break;
+            }
+        case 0x1000: // fallthrough if not reading from bootrom
+        case 0x2000:
+        case 0x3000:
+        case 0x4000:
+        case 0x5000:
+        case 0x6000:
+        case 0x7000:
+            val = cartridge_read(mmu->gb->cartridge, addr); break;
+
+        case 0x8000:
+        case 0x9000:
+            val = mmu->gb->vram[addr - 0x8000]; break;
+
+        case 0xA000:
+        case 0xB000:
+            val = cartridge_read(mmu->gb->cartridge, addr); break;
+
+        case 0xC000:
+        case 0xD000:
+            val = mmu->gb->wram[addr - 0xC000]; break;
+
+        case 0xE000:
+        case 0xF000:
+            if (addr <= 0xFDFF)
+                val = mmu->gb->wram[addr - 0xE000];
+            else if (addr <= 0xFE9F)
+                val = mmu->gb->oam[addr - 0xFE00];
+            else if (addr <= 0xFEFF)
+                break;
+            else if (addr <= 0xFF7F)
+                val = mmu->gb->io_registers[addr - 0xFF00];
+            else if (addr <= 0xFFFE)
+                val = mmu->gb->hram[addr - 0xFF80];
+            else
+                val = mmu->gb->ie;
     }
-    else if (0x8000 <= addr && addr <= 0x9FFF) val = mmu->gb->vram[addr - 0x8000];
-    else if (0xA000 <= addr && addr <= 0xBFFF) val = cartridge_read(mmu->gb->cartridge, addr);
-    else if (0xC000 <= addr && addr <= 0xDFFF) val = mmu->gb->wram[addr - 0xC000];
-    else if (0xE000 <= addr && addr <= 0xFDFF) val = mmu->gb->wram[addr - 0xE000];
-    else if (0xFE00 <= addr && addr <= 0xFE9F) val = mmu->gb->oam[addr - 0xFE00];
-    else if (0xFEA0 <= addr && addr <= 0xFEFF) {
-        // prohibited, used to emulate OAM corruption bug
-        return 0xFF;
-    }
-    else if (0xFF00 <= addr && addr <= 0xFF7F) val = mmu->gb->io_registers[addr - 0xFF00];
-    else if (0xFF80 <= addr && addr <= 0xFFFE) val = mmu->gb->hram[addr - 0xFF90];
-    else if (addr == 0xFFFF) val = mmu->gb->ie;
 
     return val;
 }
 
 void mmu_write(MMU *mmu, uint16_t addr, uint8_t val) {
-    switch (addr >> 12) {
-        case 0x08:
-        case 0x09:
+    switch (addr & 0xF000) {
+        case 0x8000:
+        case 0x9000:
             mmu->gb->vram[addr - 0x8000] = val; break;
 
-        case 0x0A:
-        case 0x0B:
+        case 0xA000:
+        case 0xB000:
             cartridge_write(mmu->gb->cartridge, addr, val); break;
 
-        case 0x0C:
-        case 0x0D:
+        case 0xC000:
+        case 0xD000:
             mmu->gb->wram[addr - 0xC000] = val; break;
 
-        case 0x0E:
-        case 0x0F:
-            if (addr <= 0xFDFF) mmu->gb->wram[addr - 0xE000] = val;
-            else if (addr <= 0xFE9F) mmu->gb->oam[addr - 0xFE00] = val;
-            else if (addr <= 0xFEFF) return;
-            else if (addr <= 0xFF7F) mmu->gb->io_registers[addr - 0xFF00] = val;
-            else if (addr <= 0xFFFE) mmu->gb->hram[addr - 0xFF80] = val;
-            else mmu->gb->ie = val;
+        case 0xE000:
+        case 0xF000: 
+            if (addr <= 0xFDFF)
+                mmu->gb->wram[addr - 0xE000] = val;
+            else if (addr <= 0xFE9F)
+                mmu->gb->oam[addr - 0xFE00] = val;
+            else if (addr <= 0xFEFF)
+                return;
+            else if (addr <= 0xFF7F) {
+                mmu->gb->io_registers[addr - 0xFF00] = val;
+
+                if (addr == DMA_ADDR) mmu_dma_transfer(mmu, val);
+                else if (addr == BANK_ADDR) mmu->bootrom_mapped = 0;
+            }
+            else if (addr <= 0xFFFE)
+                mmu->gb->hram[addr - 0xFF80] = val;
+            else
+                mmu->gb->ie = val;
     }
 }
 

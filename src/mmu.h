@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#define DMA_ADDR 0xFF46
 #define BANK_ADDR 0xFF50
 
 typedef struct MMU {

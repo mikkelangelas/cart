@@ -48,8 +48,6 @@ Emulator *create_emulator() {
 
     new_emu->gb = create_gb("test.gb");
 
-    if (new_emu->gb == NULL) printf("sraka");
-
     return new_emu;
 }
 

@@ -59,17 +59,16 @@ static inline uint8_t evaluate_condition(CPU *cpu, Condition cond) {
 
 }
 
-static inline uint8_t pc_fetch_byte(CPU *cpu) {
+static inline uint8_t pc_read_byte(CPU *cpu) {
     uint8_t byte = mmu_read(&cpu->gb->mmu, cpu->pc++);
 
-    printf("%x ", cpu->pc - 1);
-    printf("fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
+    printf("%x fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", cpu->pc-1, byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
     return byte; 
 }
 
 
-static inline uint16_t pc_fetch_word(CPU *cpu) {
-    return (uint16_t)pc_fetch_byte(cpu) | ((uint16_t)pc_fetch_byte(cpu) << 8);
+static inline uint16_t pc_read_word(CPU *cpu) {
+    return (uint16_t)pc_read_byte(cpu) | ((uint16_t)pc_read_byte(cpu) << 8);
 }
 
 
@@ -98,11 +97,11 @@ uint8_t cpu_step(CPU *cpu) {
     if (cycles > 0) return cycles;
     if (cpu->halted == 1) return 1;
 
-    uint8_t opcode = pc_fetch_byte(cpu);
+    uint8_t opcode = pc_read_byte(cpu);
 
     cycles = (opcode != 0xCB)
         ? cpu_execute(cpu, opcode)
-        : cpu_execute_prefixed(cpu, pc_fetch_byte(cpu));
+        : cpu_execute_prefixed(cpu, pc_read_byte(cpu));
 
     return cycles;
 }
@@ -118,18 +117,18 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                     case 0x00:
                         nop(cpu); break;
                     case 0x10:
-                        stop(cpu, pc_fetch_byte(cpu)); break;
+                        stop(cpu, pc_read_byte(cpu)); break;
                     case 0x08:
-                        ld_a16_sp(cpu, pc_fetch_word(cpu)); break;
+                        ld_a16_sp(cpu, pc_read_word(cpu)); break;
                     case 0x18: 
-                        jr_e8(cpu, pc_fetch_byte(cpu)); break;
+                        jr_e8(cpu, pc_read_byte(cpu)); break;
                     default:
-                        extra_cycles = jr_cond_e8(cpu, (opcode >> 3) & 0x03, pc_fetch_byte(cpu)); break;
+                        extra_cycles = jr_cond_e8(cpu, (opcode >> 3) & 0x03, pc_read_byte(cpu)); break;
                 }
                 break;
 
             case 0x01:
-                ld_r16_n16(cpu, (opcode >> 4) & 0x03, pc_fetch_word(cpu)); break;
+                ld_r16_n16(cpu, (opcode >> 4) & 0x03, pc_read_word(cpu)); break;
 
             case 0x02:
                 switch (opcode) {
@@ -156,7 +155,7 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
 
             case 0x06:
             case 0x0E:
-                ld_r8_n8(cpu, (opcode >> 3) & 0x07, pc_fetch_byte(cpu)); break;
+                ld_r8_n8(cpu, (opcode >> 3) & 0x07, pc_read_byte(cpu)); break;
 
             case 0x07:
                 switch (opcode) {
@@ -220,13 +219,13 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
             case 0x08:
                 switch (opcode) {
                     case 0xE0:
-                        ldh_a8_a(cpu, pc_fetch_byte(cpu)); break;
+                        ldh_a8_a(cpu, pc_read_byte(cpu)); break;
                     case 0xF0:
-                        ldh_a_a8(cpu, pc_fetch_byte(cpu)); break;
+                        ldh_a_a8(cpu, pc_read_byte(cpu)); break;
                     case 0xE8:
-                        add_sp_e8(cpu, pc_fetch_byte(cpu)); break;
+                        add_sp_e8(cpu, pc_read_byte(cpu)); break;
                     case 0xF8:
-                        ld_hl_sp_e8(cpu, pc_fetch_byte(cpu)); break;
+                        ld_hl_sp_e8(cpu, pc_read_byte(cpu)); break;
                     default:
                         extra_cycles = ret_cond(cpu, (opcode >> 3) & 0x03) * 3; break;
                 }
@@ -247,18 +246,18 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                     case 0xF2:
                         ldh_a_cmem(cpu); break;
                     case 0xEA:
-                        ld_a16_a(cpu, pc_fetch_word(cpu)); break;
+                        ld_a16_a(cpu, pc_read_word(cpu)); break;
                     case 0xFA:
-                        ld_a_a16(cpu, pc_fetch_word(cpu)); break;
+                        ld_a_a16(cpu, pc_read_word(cpu)); break;
                     default:
-                        extra_cycles = jp_cond_a16(cpu, (opcode >> 3) & 0x03, pc_fetch_word(cpu)); break;
+                        extra_cycles = jp_cond_a16(cpu, (opcode >> 3) & 0x03, pc_read_word(cpu)); break;
                 }
                 break;
 
             case 0x03:
                 switch (opcode) {
                     case 0xC3:
-                        jp_a16(cpu, pc_fetch_word(cpu)); break;
+                        jp_a16(cpu, pc_read_word(cpu)); break;
                     case 0xF3:
                         di(cpu); break;
                 }
@@ -266,7 +265,7 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
 
             case 0x04:
             case 0x0C:
-                extra_cycles = call_cond_a16(cpu, (opcode >> 3) & 0x03, pc_fetch_word(cpu)) * 3; break;
+                extra_cycles = call_cond_a16(cpu, (opcode >> 3) & 0x03, pc_read_word(cpu)) * 3; break;
 
             case 0x05: {
                 // since 2 enum variants can't have the same value,
@@ -279,13 +278,13 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
             case 0x06:
                 switch (opcode) {
                     case 0xC6:
-                        add_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                        add_a_n8(cpu, pc_read_byte(cpu)); break;
                     case 0xD6:
-                        sub_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                        sub_a_n8(cpu, pc_read_byte(cpu)); break;
                     case 0xE6:
-                        and_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                        and_a_n8(cpu, pc_read_byte(cpu)); break;
                     case 0xF6:
-                        or_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                        or_a_n8(cpu, pc_read_byte(cpu)); break;
                 }
                 break;
 
@@ -310,18 +309,18 @@ uint8_t cpu_execute(CPU *cpu, uint8_t opcode) {
                 ei(cpu); break;
 
             case 0x0D:
-                call_a16(cpu, pc_fetch_word(cpu)); break;
+                call_a16(cpu, pc_read_word(cpu)); break;
 
             case 0x0E:
                 switch (opcode) {
                     case 0xCE:
-                        adc_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                        adc_a_n8(cpu, pc_read_byte(cpu)); break;
                     case 0xDE:
-                        sbc_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                        sbc_a_n8(cpu, pc_read_byte(cpu)); break;
                     case 0xEE:
-                        xor_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                        xor_a_n8(cpu, pc_read_byte(cpu)); break;
                     case 0xFE:
-                        cp_a_n8(cpu, pc_fetch_byte(cpu)); break;
+                        cp_a_n8(cpu, pc_read_byte(cpu)); break;
                 }
 
                 break;

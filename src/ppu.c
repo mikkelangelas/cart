@@ -1,12 +1,10 @@
 #include "ppu.h"
-
 #include "gb.h"
 #include "util.h"
 #include <stdio.h>
 
 static inline void next_scanline(PPU *ppu) {
-    ppu->current_line++;
-    mmu_write(&ppu->gb->mmu, LY_ADDR, ppu->current_line);
+    mmu_write(&ppu->gb->mmu, LY_ADDR, ++ppu->current_line);
 }
 
 static uint16_t fetch_tile_row_data(PPU *ppu, uint16_t addr, uint8_t idx, uint8_t y) {
@@ -42,7 +40,7 @@ static uint8_t fetch_pixel_color(PPU *ppu, uint16_t pal_addr, uint16_t row_data,
     return (palette >> (col_idx * 2)) & 0x03;
 }
 
-void ppu_init(PPU *ppu, struct Gameboy *gb) {
+void ppu_init(PPU *ppu, struct GB *gb) {
     *ppu = (PPU){
         .mode = PPU_MODE_OAM_SCAN,
         .current_dot = 0,
@@ -61,9 +59,10 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
 
     if ((lcdc & LCDC_LCD_PPU_ENABLE_MASK) == 0) return;
 
-
     for (uint8_t d = 0; d <= (cycles * DOTS_PER_CYCLE_DMG); d++) {
         ppu->current_dot++;
+
+        ppu_update_stat(ppu);
 
         switch (ppu->mode) {
             case PPU_MODE_OAM_SCAN:
@@ -94,12 +93,9 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
 
             case PPU_MODE_VBLANK:
                 if (ppu->current_dot == 1) {
-                    gameboy_interrupt(ppu->gb, INTERRUPT_VBLANK);
+                    gb_interrupt(ppu->gb, INTERRUPT_VBLANK);
                     ppu->gb->frame_ready = 1;
                 }
-
-                if (ppu->current_dot % DOTS_PER_LINE == 0)
-                    next_scanline(ppu);
 
                 if (ppu->current_dot == VBLANK_DOTS) {
                     ppu->mode = PPU_MODE_OAM_SCAN;
