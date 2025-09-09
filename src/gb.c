@@ -31,7 +31,6 @@ GB *create_gb(const char *rom_file) {
     memset(new_gb->hram, 0x00, HRAM_SIZE);
     new_gb->ie = 0x00;
 
-    mmu_write(&new_gb->mmu, 0xFF00, 0xFF);
     return new_gb;
 }
 

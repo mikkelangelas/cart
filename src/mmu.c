@@ -18,7 +18,7 @@ uint8_t mmu_read(MMU *mmu, uint16_t addr) {
     switch (addr & 0xF000) {
         case 0x0000:
             if (mmu->bootrom_mapped == 1 && addr < 0x0100) {
-                val = DMG_BOOTROM[addr];
+               val = DMG_BOOTROM[addr];
                 break;
             }
         case 0x1000: // fallthrough if not reading from bootrom

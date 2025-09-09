@@ -3,8 +3,12 @@
 #include "util.h"
 #include <stdio.h>
 
-static inline void next_scanline(PPU *ppu) {
+static inline void horizontal_rectrace(PPU *ppu) {
     mmu_write(&ppu->gb->mmu, LY_ADDR, ++ppu->current_line);
+}
+
+static inline void vertical_retrace(PPU *ppu) {
+    mmu_write(&ppu->gb->mmu, LY_ADDR, ppu->current_line = 0);
 }
 
 static uint16_t fetch_tile_row_data(PPU *ppu, uint16_t addr, uint8_t idx, uint8_t y) {
@@ -87,7 +91,7 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
                         ? PPU_MODE_VBLANK
                         : PPU_MODE_OAM_SCAN;
                     ppu->current_dot = 0;
-                    next_scanline(ppu);
+                    horizontal_rectrace(ppu);
                 }
                 break;
 
@@ -97,11 +101,14 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
                     ppu->gb->frame_ready = 1;
                 }
 
+                if (ppu->current_dot % DOTS_PER_LINE == 0)
+                    horizontal_rectrace(ppu);
+
+
                 if (ppu->current_dot == VBLANK_DOTS) {
                     ppu->mode = PPU_MODE_OAM_SCAN;
                     ppu->current_dot = 0;
-                    ppu->current_line = 0;
-                    mmu_write(&ppu->gb->mmu, LY_ADDR, 0);
+                    vertical_retrace(ppu);
                 }
                 break;
         }
