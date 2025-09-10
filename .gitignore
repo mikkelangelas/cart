@@ -3,3 +3,6 @@ build/
 
 # clangd config
 .clangd
+
+# emulation test files
+*.gb
