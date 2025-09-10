@@ -26,19 +26,19 @@ typedef enum Reg16 {
     REG16_AF = 4
 } Reg16;
 
-typedef enum Condition {
-    CONDITION_NZ = 0,
-    CONDITION_Z  = 1,
-    CONDITION_NC = 2,
-    CONDITION_C  = 3
-} Condition;
+typedef enum CPUCondition {
+    CPU_CONDITION_NZ = 0,
+    CPU_CONDITION_Z  = 1,
+    CPU_CONDITION_NC = 2,
+    CPU_CONDITION_C  = 3
+} CPUCondition;
 
-typedef enum Flag {
-    FLAG_Z = 7,
-    FLAG_N = 6,
-    FLAG_H = 5,
-    FLAG_C = 4
-} Flag;
+typedef enum CPUFlag {
+    CPU_FLAG_Z = 7,
+    CPU_FLAG_N = 6,
+    CPU_FLAG_H = 5,
+    CPU_FLAG_C = 4
+} CPUFlag;
 
 typedef struct CPU {
     uint8_t a;
@@ -167,17 +167,17 @@ void stop(CPU *cpu, uint8_t val);
 // jump, call and return instructions
 
 void jr_e8(CPU *cpu, uint8_t val);
-uint8_t jr_cond_e8(CPU *cpu, Condition cond, uint8_t val);
+uint8_t jr_cond_e8(CPU *cpu, CPUCondition cond, uint8_t val);
 
 void jp_hl(CPU *cpu);
 void jp_a16(CPU *cpu, uint16_t addr);
-uint8_t jp_cond_a16(CPU *cpu, Condition cond, uint16_t addr);
+uint8_t jp_cond_a16(CPU *cpu, CPUCondition cond, uint16_t addr);
 
 void call_a16(CPU *cpu, uint16_t addr);
-uint8_t call_cond_a16(CPU *cpu, Condition cond, uint16_t addr);
+uint8_t call_cond_a16(CPU *cpu, CPUCondition cond, uint16_t addr);
 
 void ret(CPU *cpu);
-uint8_t ret_cond(CPU *cpu, Condition cond);
+uint8_t ret_cond(CPU *cpu, CPUCondition cond);
 void reti(CPU *cpu);
 
 void rst_vec(CPU *cpu, uint8_t vec);

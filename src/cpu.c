@@ -13,53 +13,54 @@ extern inline void set_bit(uint8_t *dest, uint8_t bit, uint8_t val);
 //      helper functions
 // --------------------------
 
-static inline uint8_t get_flag(CPU *cpu, Flag flag) {
+static inline uint8_t get_flag(CPU *cpu, CPUFlag flag) {
     return get_bit(cpu->f, flag);
 }
 
 static inline void set_flags_sp_e8(CPU *cpu, uint8_t op) {
     cpu->f = 0x00 
-        | (((uint8_t)cpu->sp & 0x0F) + (op & 0x0F) > 0x0F) << FLAG_H
-        | (cpu->sp + (uint16_t)op > 0x00FF) << FLAG_C;
+        | (((uint8_t)cpu->sp & 0x0F) + (op & 0x0F) > 0x0F) << CPU_FLAG_H
+        | (cpu->sp + (uint16_t)op > 0x00FF) << CPU_FLAG_C;
 }
 
 static inline void set_flags_addition(CPU *cpu, uint8_t op1, uint8_t op2) {
     cpu->f = 0x00
-        | ((uint8_t)(op1 + op2) == 0x00) << FLAG_Z
-        | ((op1 & 0x0F) + (op2 & 0x0F) > 0x0F) << FLAG_H
-        | ((uint16_t)op1 + (uint16_t)op2 > 0x00FF) << FLAG_C;
+        | ((uint8_t)(op1 + op2) == 0x00) << CPU_FLAG_Z
+        | ((op1 & 0x0F) + (op2 & 0x0F) > 0x0F) << CPU_FLAG_H
+        | ((uint16_t)op1 + (uint16_t)op2 > 0x00FF) << CPU_FLAG_C;
 }
 
 static inline void set_flags_subtraction(CPU *cpu, uint8_t op1, uint8_t op2) {
     cpu->f = 0x40 
-        | ((uint8_t)(op1 - op2) == 0x00) << FLAG_Z
-        | ((op2 & 0x0F) > (op1 & 0x0F)) << FLAG_H
-        | (op2 > op1) << FLAG_C;
+        | ((uint8_t)(op1 - op2) == 0x00) << CPU_FLAG_Z
+        | ((op2 & 0x0F) > (op1 & 0x0F)) << CPU_FLAG_H
+        | (op2 > op1) << CPU_FLAG_C;
 }
 
 static inline void set_flags_and(CPU *cpu, uint8_t res) {
-    cpu->f = 0x02 | ((res == 0x00) << FLAG_Z);
+    cpu->f = 0x02 | ((res == 0x00) << CPU_FLAG_Z);
 }
 
 static inline void set_flags_or_xor(CPU *cpu, uint8_t res) {
-    cpu->f = 0x00 | ((res == 0x00) << FLAG_Z);
+    cpu->f = 0x00 | ((res == 0x00) << CPU_FLAG_Z);
 }
 
 static inline void set_flags_roll_a(CPU *cpu, uint8_t carry) {
-    cpu->f = 0x00 | (carry << FLAG_C);
+    cpu->f = 0x00 | (carry << CPU_FLAG_C);
 }
 
 static inline void set_flags_roll_shift(CPU *cpu, uint8_t carry, uint8_t res) {
-    cpu->f = (carry << FLAG_C) | ((res == 0x00) << FLAG_Z);
+    cpu->f = (carry << CPU_FLAG_C) | ((res == 0x00) << CPU_FLAG_Z);
 }
 
-static inline uint8_t evaluate_condition(CPU *cpu, Condition cond) {
+static inline uint8_t evaluate_condition(CPU *cpu, CPUCondition cond) {
     // thats how the condition can be checked directly from the opcode
-    return get_flag(cpu, FLAG_Z - (3 * (cond >> 1))) == (cond & 0x01);
+    return get_flag(cpu, CPU_FLAG_Z - (3 * (cond >> 1))) == (cond & 0x01);
 
 }
 
 static inline uint8_t pc_read_byte(CPU *cpu) {
+    //printf("pc: %x\n", cpu->pc);
     uint8_t byte = mmu_read(&cpu->gb->mmu, cpu->pc++);
 
     printf("%x fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", cpu->pc-1, byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
@@ -607,19 +608,19 @@ void add_hl_r16(CPU *cpu, Reg16 reg) {
     write_r16(cpu, REG16_HL, op1 + op2);
 
     cpu->f = (cpu->f & 0x80) |
-        ((op1 & 0x00FF) + (op2 & 0x00FF) > 0x00FF) << FLAG_H |
-        ((uint32_t)op1 + (uint32_t)op2 > 0xFFFF) << FLAG_C;
+        ((op1 & 0x00FF) + (op2 & 0x00FF) > 0x00FF) << CPU_FLAG_H |
+        ((uint32_t)op1 + (uint32_t)op2 > 0xFFFF) << CPU_FLAG_C;
 }
 
 void adc_a_r8(CPU *cpu, Reg8 reg) {
-    uint8_t op = read_r8(cpu, reg) + get_flag(cpu, FLAG_C);
+    uint8_t op = read_r8(cpu, reg) + get_flag(cpu, CPU_FLAG_C);
 
     set_flags_addition(cpu, cpu->a, op);
     cpu->a += op;
 }
 
 void adc_a_n8(CPU *cpu, uint8_t val) {
-    uint8_t op = val + get_flag(cpu, FLAG_C);
+    uint8_t op = val + get_flag(cpu, CPU_FLAG_C);
 
     set_flags_addition(cpu, cpu->a, op);
     cpu->a += op;
@@ -646,14 +647,14 @@ void cp_a_n8(CPU *cpu, uint8_t val) {
 }
 
 void sbc_a_r8(CPU *cpu, Reg8 reg) {
-    uint8_t op = read_r8(cpu, reg) + get_flag(cpu, FLAG_C);
+    uint8_t op = read_r8(cpu, reg) + get_flag(cpu, CPU_FLAG_C);
 
     set_flags_subtraction(cpu, cpu->a, op);
     cpu->a -= op;
 }
 
 void sbc_a_n8(CPU *cpu, uint8_t val) {
-    uint8_t op = val + get_flag(cpu, FLAG_C);
+    uint8_t op = val + get_flag(cpu, CPU_FLAG_C);
 
     set_flags_subtraction(cpu, cpu->a, op);
     cpu->a -= op;
@@ -677,9 +678,9 @@ void dec_r8(CPU *cpu, Reg8 reg) {
     write_r8(cpu, reg, val - 1);
 
     cpu->f = (cpu->f & 0x10)
-        | ((uint8_t)(val - 1) == 0x00) << FLAG_Z
+        | ((uint8_t)(val - 1) == 0x00) << CPU_FLAG_Z
         | 0x40
-        | (0x01 > val) << FLAG_H;
+        | (0x01 > val) << CPU_FLAG_H;
 }
 
 void inc_r8(CPU *cpu, Reg8 reg) {
@@ -688,8 +689,8 @@ void inc_r8(CPU *cpu, Reg8 reg) {
     write_r8(cpu, reg, val + 1);
 
     cpu->f = (cpu->f & 0x10)
-        | ((uint8_t)(val + 1) == 0x00) << FLAG_Z
-        | ((val & 0x0F) + 1 > 0x0F) << FLAG_H;
+        | ((uint8_t)(val + 1) == 0x00) << CPU_FLAG_Z
+        | ((val & 0x0F) + 1 > 0x0F) << CPU_FLAG_H;
 }
 
 void dec_r16(CPU *cpu, Reg16 reg) {
@@ -746,7 +747,7 @@ void rlca(CPU *cpu) {
 void rla(CPU *cpu) {
     uint8_t carry = (cpu->a >> 7) & 0x01;
 
-    cpu->a = (cpu->a << 1) | get_flag(cpu, FLAG_C);
+    cpu->a = (cpu->a << 1) | get_flag(cpu, CPU_FLAG_C);
     set_flags_roll_a(cpu, carry);
 }
 
@@ -760,7 +761,7 @@ void rrca(CPU *cpu) {
 void rra(CPU *cpu) {
     uint8_t carry = cpu->a & 0x01;
 
-    cpu->a = (cpu->a >> 1) | (get_flag(cpu, FLAG_C) << 7);
+    cpu->a = (cpu->a >> 1) | (get_flag(cpu, CPU_FLAG_C) << 7);
     set_flags_roll_a(cpu, carry);
 }
 
@@ -776,7 +777,7 @@ void cpl(CPU *cpu) {
 // ---------------------------------
 
 void ccf(CPU *cpu) {
-    cpu->f = (cpu->f & 0x80) | (~get_flag(cpu, FLAG_C) << FLAG_C);
+    cpu->f = (cpu->f & 0x80) | (~get_flag(cpu, CPU_FLAG_C) << CPU_FLAG_C);
 }
 
 void scf(CPU *cpu) {
@@ -817,7 +818,7 @@ void jr_e8(CPU *cpu, uint8_t val) {
     cpu->pc += (int8_t)val;
 }
 
-uint8_t jr_cond_e8(CPU *cpu, Condition cond, uint8_t val) {
+uint8_t jr_cond_e8(CPU *cpu, CPUCondition cond, uint8_t val) {
     if (evaluate_condition(cpu, cond) == 0) return 0;
 
     cpu->pc += (int8_t)val;
@@ -832,7 +833,7 @@ void jp_a16(CPU *cpu, uint16_t addr) {
     cpu->pc = addr;
 }
 
-uint8_t jp_cond_a16(CPU *cpu, Condition cond, uint16_t addr) {
+uint8_t jp_cond_a16(CPU *cpu, CPUCondition cond, uint16_t addr) {
     if (evaluate_condition(cpu, cond) == 0) return 0;
 
     cpu->pc = addr;
@@ -844,7 +845,7 @@ void call_a16(CPU *cpu, uint16_t addr) {
     cpu->pc = addr;
 }
 
-uint8_t call_cond_a16(CPU *cpu, Condition cond, uint16_t addr) {
+uint8_t call_cond_a16(CPU *cpu, CPUCondition cond, uint16_t addr) {
     if (evaluate_condition(cpu, cond) == 0) return 0;
 
     push_stack(cpu, cpu->pc);
@@ -856,7 +857,7 @@ void ret(CPU *cpu) {
     cpu->pc = pop_stack(cpu);
 }
 
-uint8_t ret_cond(CPU *cpu, Condition cond) {
+uint8_t ret_cond(CPU *cpu, CPUCondition cond) {
     if (evaluate_condition(cpu, cond) == 0) return 0;
 
     cpu->pc = pop_stack(cpu);
@@ -885,10 +886,10 @@ void nop(CPU *cpu) {
 }
 
 void daa(CPU *cpu) {
-    uint8_t h = get_flag(cpu, FLAG_H);
-    uint8_t c = get_flag(cpu, FLAG_C);
+    uint8_t h = get_flag(cpu, CPU_FLAG_H);
+    uint8_t c = get_flag(cpu, CPU_FLAG_C);
 
-    if (get_flag(cpu, FLAG_N) == 1) {
+    if (get_flag(cpu, CPU_FLAG_N) == 1) {
         if (h == 1) cpu->a -= 0x06;
         if (c == 1) cpu->a -= 0x60;
     }
@@ -900,7 +901,7 @@ void daa(CPU *cpu) {
         }
     }
 
-    cpu->f |= (cpu->a == 0x00) << FLAG_Z;
+    cpu->f |= (cpu->a == 0x00) << CPU_FLAG_Z;
 }
 
 void pop_r16(CPU *cpu, Reg16 dest) {
@@ -937,7 +938,7 @@ void rrc_r8(CPU *cpu, Reg8 reg) {
 void rl_r8(CPU *cpu, Reg8 reg) {
     uint8_t val = read_r8(cpu, reg);
     uint8_t carry = (val >> 7) & 0x01;
-    uint8_t res = (val << 1) | get_flag(cpu, FLAG_C);
+    uint8_t res = (val << 1) | get_flag(cpu, CPU_FLAG_C);
 
     write_r8(cpu, reg, res);
     set_flags_roll_shift(cpu, carry, res);
@@ -946,7 +947,7 @@ void rl_r8(CPU *cpu, Reg8 reg) {
 void rr_r8(CPU *cpu, Reg8 reg) {
     uint8_t val = read_r8(cpu, reg);
     uint8_t carry = val & 0x01;
-    uint8_t res = (val >> 1) | (get_flag(cpu, FLAG_C) << 7);
+    uint8_t res = (val >> 1) | (get_flag(cpu, CPU_FLAG_C) << 7);
 
     write_r8(cpu, reg, res);
     set_flags_roll_shift(cpu, carry, res);
@@ -980,13 +981,13 @@ void swap_r8(CPU *cpu, Reg8 reg) {
     uint8_t val = read_r8(cpu, reg);
 
     write_r8(cpu, reg, (val >> 4) | (val << 4));
-    cpu->f |= (val == 0) << FLAG_Z;
+    cpu->f |= (val == 0) << CPU_FLAG_Z;
 }
 
 void bit_r8(CPU *cpu, uint8_t bit, Reg8 reg) {
     cpu->f = (cpu->f & 0x10)
         | 0x20
-        | ((((read_r8(cpu, reg) >> bit) & 0x01) == 0x00) << FLAG_Z);
+        | ((((read_r8(cpu, reg) >> bit) & 0x01) == 0x00) << CPU_FLAG_Z);
 }
 
 void res_r8(CPU *cpu, uint8_t bit, Reg8 reg) {
