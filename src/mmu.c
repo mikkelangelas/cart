@@ -50,7 +50,6 @@ uint8_t mmu_read(MMU *mmu, uint16_t addr) {
                 val = mmu->gb->oam[addr - OAM_BASE_ADDR];
             else if (addr <= 0xFEFF)
                 break;
-            else if (addr == 0xFF00) val = 0xFF;
             else if (addr <= 0xFF7F)
                 val = mmu->gb->io[addr - IO_BASE_ADDR];
             else if (addr <= 0xFFFE)
