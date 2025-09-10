@@ -1,7 +1,6 @@
 #include "ppu.h"
 #include "gb.h"
 #include "util.h"
-#include <stdio.h>
 
 static inline void horizontal_rectrace(PPU *ppu) {
     mmu_write(&ppu->gb->mmu, LY_ADDR, ++ppu->current_line);
@@ -121,7 +120,7 @@ void ppu_scan_oam(PPU *ppu, uint8_t lcdc) {
         : OBJ_HEIGHT_SHORT;
 
     for (uint8_t o = 0; o < 40; o++) {
-        uint8_t obj_y = mmu_read(&ppu->gb->mmu, OAM_ADDR + (o * 4));
+        uint8_t obj_y = mmu_read(&ppu->gb->mmu, OAM_BASE_ADDR + (o * 4));
 
         if (ppu->current_line - obj_y < sprite_h) {
             ppu->selected_objs[ppu->num_objs] = o;
@@ -173,7 +172,6 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
         }
 
         uint8_t color = fetch_pixel_color(ppu, BGP_ADDR, tile_data, tile_x);
-        //printf("sy: %d sx: %d my: %d mx: %d ty: %d tx: %d tidx: %d color: %d\n", scrolled_y, scrolled_x, map_y, map_x, tile_y, tile_x, tile_idx, color);
 
         ppu->gb->framebuffer[ppu->current_line * GB_SCREEN_W + screen_x] = color;
     }

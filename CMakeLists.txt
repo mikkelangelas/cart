@@ -10,6 +10,7 @@ add_executable(cart
     src/mmu.c
     src/ppu.c
     src/cartridge.c
+    src/joypad.c
     src/util.c
 )
 

@@ -32,7 +32,7 @@ uint8_t mmu_read(MMU *mmu, uint16_t addr) {
 
         case 0x8000:
         case 0x9000:
-            val = mmu->gb->vram[addr - 0x8000]; break;
+            val = mmu->gb->vram[addr - VRAM_BASE_ADDR]; break;
 
         case 0xA000:
         case 0xB000:
@@ -40,21 +40,21 @@ uint8_t mmu_read(MMU *mmu, uint16_t addr) {
 
         case 0xC000:
         case 0xD000:
-            val = mmu->gb->wram[addr - 0xC000]; break;
+            val = mmu->gb->wram[addr - WRAM_BASE_ADDR]; break;
 
         case 0xE000:
         case 0xF000:
             if (addr <= 0xFDFF)
-                val = mmu->gb->wram[addr - 0xE000];
+                val = mmu->gb->wram[addr - WRAM_ECHO_BASE_ADDR];
             else if (addr <= 0xFE9F)
-                val = mmu->gb->oam[addr - 0xFE00];
+                val = mmu->gb->oam[addr - OAM_BASE_ADDR];
             else if (addr <= 0xFEFF)
                 break;
             else if (addr == 0xFF00) val = 0xFF;
             else if (addr <= 0xFF7F)
-                val = mmu->gb->io_registers[addr - 0xFF00];
+                val = mmu->gb->io[addr - IO_BASE_ADDR];
             else if (addr <= 0xFFFE)
-                val = mmu->gb->hram[addr - 0xFF80];
+                val = mmu->gb->hram[addr - HRAM_BASE_ADDR];
             else
                 val = mmu->gb->ie;
     }
@@ -66,7 +66,7 @@ void mmu_write(MMU *mmu, uint16_t addr, uint8_t val) {
     switch (addr & 0xF000) {
         case 0x8000:
         case 0x9000:
-            mmu->gb->vram[addr - 0x8000] = val; break;
+            mmu->gb->vram[addr - VRAM_BASE_ADDR] = val; break;
 
         case 0xA000:
         case 0xB000:
@@ -74,24 +74,25 @@ void mmu_write(MMU *mmu, uint16_t addr, uint8_t val) {
 
         case 0xC000:
         case 0xD000:
-            mmu->gb->wram[addr - 0xC000] = val; break;
+            mmu->gb->wram[addr - WRAM_BASE_ADDR] = val; break;
 
         case 0xE000:
         case 0xF000: 
             if (addr <= 0xFDFF)
-                mmu->gb->wram[addr - 0xE000] = val;
+                mmu->gb->wram[addr - WRAM_ECHO_BASE_ADDR] = val;
             else if (addr <= 0xFE9F)
-                mmu->gb->oam[addr - 0xFE00] = val;
+                mmu->gb->oam[addr - OAM_BASE_ADDR] = val;
             else if (addr <= 0xFEFF)
                 return;
             else if (addr <= 0xFF7F) {
-                mmu->gb->io_registers[addr - 0xFF00] = val;
+                mmu->gb->io[addr - IO_BASE_ADDR] = val;
 
-                if (addr == DMA_ADDR) mmu_dma_transfer(mmu, val);
+                if (addr == JOYP_ADDR) joypad_update(&mmu->gb->joypad);
+                else if (addr == DMA_ADDR) mmu_dma_transfer(mmu, val);
                 else if (addr == BANK_ADDR) mmu->bootrom_mapped = 0;
             }
             else if (addr <= 0xFFFE)
-                mmu->gb->hram[addr - 0xFF80] = val;
+                mmu->gb->hram[addr - HRAM_BASE_ADDR] = val;
             else
                 mmu->gb->ie = val;
     }
@@ -103,5 +104,5 @@ void mmu_dma_transfer(MMU *mmu, uint8_t start) {
     uint16_t src = start << 8;
 
     for (uint8_t b = 0; b < OAM_SIZE; b++)
-        mmu_write(mmu, OAM_ADDR + b, mmu_read(mmu, src + b));
+        mmu->gb->oam[b] = mmu_read(mmu, src + b);
 }

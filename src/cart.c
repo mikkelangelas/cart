@@ -86,6 +86,17 @@ uint8_t cart_run() {
 
 void cart_handle_events(Emulator *emu) {
     if (emu->keys[SDL_SCANCODE_ESCAPE]) emu->should_close = 1;
+
+    if (emu->gb == NULL) return;
+
+    if (emu->keys[SDL_SCANCODE_Z]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_B);
+    if (emu->keys[SDL_SCANCODE_X]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_A);
+    if (emu->keys[SDL_SCANCODE_C]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_START);
+    if (emu->keys[SDL_SCANCODE_V]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_SELECT);
+    if (emu->keys[SDL_SCANCODE_RIGHT]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_RIGHT);
+    if (emu->keys[SDL_SCANCODE_LEFT]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_LEFT);
+    if (emu->keys[SDL_SCANCODE_UP]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_UP);
+    if (emu->keys[SDL_SCANCODE_DOWN]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_DOWN);
 }
 
 void cart_render(Emulator *emu) {

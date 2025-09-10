@@ -11,9 +11,6 @@
 #define DOTS_PER_LINE    456
 #define DOTS_PER_CYCLE_DMG 4
 
-#define VRAM_ADDR 0x8000
-#define OAM_ADDR  0xFE00
-
 #define LCDC_ADDR 0xFF40
 #define STAT_ADDR 0xFF41
 #define SCY_ADDR  0xFF42
