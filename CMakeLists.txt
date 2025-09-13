@@ -16,7 +16,7 @@ add_executable(cart
 
 set_target_properties(cart PROPERTIES C_STANDARD 99)
 
-find_package(SDL3 REQUIRED CONFIG)
+find_package(SDL3 CONFIG)
 
 if (NOT ${SDL3_FOUND})
     add_subdirectory(third-party/SDL3)
