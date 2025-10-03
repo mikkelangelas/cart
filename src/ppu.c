@@ -43,6 +43,10 @@ static uint8_t fetch_pixel_color(PPU *ppu, uint16_t pal_addr, uint16_t row_data,
     return (palette >> (col_idx * 2)) & 0x03;
 }
 
+static inline void draw_pixel(PPU *ppu, uint8_t x, uint8_t y, uint8_t color) {
+    ppu->gb->framebuffer[y * GB_SCREEN_W + x] = color;
+}
+
 void ppu_init(PPU *ppu, struct GB *gb) {
     *ppu = (PPU){
         .mode = PPU_MODE_OAM_SCAN,
@@ -115,6 +119,8 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
 }
 
 void ppu_scan_oam(PPU *ppu, uint8_t lcdc) {
+    ppu->num_objs = 0;
+
     uint8_t sprite_h = (lcdc & LCDC_OBJ_SIZE_MASK)
         ? OBJ_HEIGHT_TALL
         : OBJ_HEIGHT_SHORT;
@@ -122,10 +128,8 @@ void ppu_scan_oam(PPU *ppu, uint8_t lcdc) {
     for (uint8_t o = 0; o < 40; o++) {
         uint8_t obj_y = mmu_read(&ppu->gb->mmu, OAM_BASE_ADDR + (o * 4));
 
-        if (ppu->current_line - obj_y < sprite_h) {
-            ppu->selected_objs[ppu->num_objs] = o;
-            ppu->num_objs++;
-        }
+        if (obj_y > 16 - sprite_h && ppu->current_line + 16 >= obj_y && ppu->current_line + 16 < obj_y + sprite_h)
+            ppu->selected_objs[ppu->num_objs++] = o;
 
         if (ppu->num_objs == 10) return;
     }
@@ -173,7 +177,7 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
 
         uint8_t color = fetch_pixel_color(ppu, BGP_ADDR, tile_data, tile_x);
 
-        ppu->gb->framebuffer[ppu->current_line * GB_SCREEN_W + screen_x] = color;
+        draw_pixel(ppu, screen_x, ppu->current_line, color);
     }
 }
 
@@ -208,12 +212,48 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
 
         uint8_t color = fetch_pixel_color(ppu, BGP_ADDR, tile_data, tile_x);
 
-        ppu->gb->framebuffer[ppu->current_line * GB_SCREEN_W + (wind_x - 7)] = color;
+        draw_pixel(ppu, wind_x - 7, ppu->current_line, color);
     }
 }
 
 void ppu_draw_obj_line(PPU *ppu, uint8_t lcdc) {
+    for (uint8_t o = 0; o < ppu->num_objs; o++) {
+        uint16_t obj_loc = OAM_BASE_ADDR + (ppu->selected_objs[o] * 4);
 
+        uint8_t obj_x = mmu_read(&ppu->gb->mmu, obj_loc + OAM_X_OFFSET);
+
+        // obj beyond the screenspace
+        if (obj_x == 0 || obj_x >= 168)
+            continue;
+
+        uint8_t obj_attr = mmu_read(&ppu->gb->mmu, obj_loc + OAM_ATTR_OFFSET);
+
+        if (obj_attr & OAM_ATTR_PRIORITY_MASK)
+            continue;
+
+        uint8_t obj_y = mmu_read(&ppu->gb->mmu, obj_loc) - 16;
+
+        // TODO -> x and y flips
+
+        uint16_t pal_addr = (obj_attr & OAM_ATTR_PALETTE_MASK) ? OBP1_ADDR : OBP0_ADDR;
+
+        uint8_t tile_y = (ppu->current_line - obj_y) % 8;
+        uint8_t tile_idx = mmu_read(&ppu->gb->mmu, obj_loc + OAM_TILE_OFFSET);
+
+        if (ppu->current_line - obj_y >= 8)
+            tile_idx++;
+
+        uint16_t tile_data = fetch_tile_row_data(ppu, 0x8000, tile_idx, tile_y);
+
+        for (uint8_t p = 0; p < OBJ_HEIGHT_SHORT; p++) {
+
+            if (obj_x + p < 8) continue;
+            
+            uint8_t color = fetch_pixel_color(ppu, pal_addr, tile_data, p);
+
+            draw_pixel(ppu, obj_x - 8 + p, ppu->current_line, color);
+        }
+    }
 }
 
 void ppu_update_stat(PPU *ppu) {

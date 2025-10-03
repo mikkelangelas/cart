@@ -3,8 +3,6 @@
 #include "gb.h"
 #include "bootrom.h"
 
-#include <stdio.h>
-
 void mmu_init(MMU *mmu, struct GB *gb) {
     *mmu = (MMU){
         .bootrom_mapped = 1,
@@ -63,6 +61,16 @@ uint8_t mmu_read(MMU *mmu, uint16_t addr) {
 
 void mmu_write(MMU *mmu, uint16_t addr, uint8_t val) {
     switch (addr & 0xF000) {
+        case 0x0000:
+        case 0x1000:
+        case 0x2000:
+        case 0x3000:
+        case 0x4000:
+        case 0x5000:
+        case 0x6000:
+        case 0x7000:
+            cartridge_write(mmu->gb->cartridge, addr, val); break;
+
         case 0x8000:
         case 0x9000:
             mmu->gb->vram[addr - VRAM_BASE_ADDR] = val; break;

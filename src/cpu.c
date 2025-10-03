@@ -60,9 +60,10 @@ static inline uint8_t evaluate_condition(CPU *cpu, CPUCondition cond) {
 }
 
 static inline uint8_t pc_read_byte(CPU *cpu) {
-    //printf("pc: %x\n", cpu->pc);
     uint8_t byte = mmu_read(&cpu->gb->mmu, cpu->pc++);
 
+    //if (cpu->pc >= 0x0100)
+        //printf("At: %x read: %x\n", cpu->pc-1, byte);
     //printf("%x fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", cpu->pc-1, byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
     return byte; 
 }

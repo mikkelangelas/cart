@@ -89,6 +89,8 @@ void cart_handle_events(Emulator *emu) {
 
     if (emu->gb == NULL) return;
 
+    joypad_reset(&emu->gb->joypad);
+
     if (emu->keys[SDL_SCANCODE_Z]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_B);
     if (emu->keys[SDL_SCANCODE_X]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_A);
     if (emu->keys[SDL_SCANCODE_C]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_START);
