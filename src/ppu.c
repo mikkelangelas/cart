@@ -222,18 +222,19 @@ void ppu_draw_obj_line(PPU *ppu, uint8_t lcdc) {
 
         uint8_t obj_x = mmu_read(&ppu->gb->mmu, obj_loc + OAM_X_OFFSET);
 
-        // obj beyond the screenspace
+        // object beyond the screenspace
         if (obj_x == 0 || obj_x >= 168)
             continue;
 
         uint8_t obj_attr = mmu_read(&ppu->gb->mmu, obj_loc + OAM_ATTR_OFFSET);
 
-        if (obj_attr & OAM_ATTR_PRIORITY_MASK)
-            continue;
+        // TODO -> x and y flips
+
+        // TODO -> find out why this doesn't work
+        // if (obj_attr & OAM_ATTR_PRIORITY_MASK)
+        //     continue;
 
         uint8_t obj_y = mmu_read(&ppu->gb->mmu, obj_loc) - 16;
-
-        // TODO -> x and y flips
 
         uint16_t pal_addr = (obj_attr & OAM_ATTR_PALETTE_MASK) ? OBP1_ADDR : OBP0_ADDR;
 

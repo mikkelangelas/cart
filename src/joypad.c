@@ -11,7 +11,7 @@ void joypad_init(Joypad *joypad, struct GB *gb) {
 void joypad_reset(Joypad *joypad) {
     // mark all buttons as released
     joypad->buttons = 0x0F;
-    joypad->buttons = 0x0F;
+    joypad->dpad = 0x0F;
 }
 
 void joypad_press(Joypad *joypad, JoypadButton button) {
