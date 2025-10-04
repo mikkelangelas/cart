@@ -18,6 +18,16 @@
 #define CART_ROM_SIZE_ADDR 0x148
 #define CART_RAM_SIZE_ADDR 0x149
 
+#define CART_RAM_BASE_ADDR 0xA000
+#define CART_ROM_BASE_ADDR 0x4000
+
+#define MBC1_RAM_ENABLE_MASK 0x0A
+#define MBC1_PRIMARY_BANK_MASK 0x1F
+#define MBC1_SECONDARY_BANK_MASK 0x03
+
+#define MBC2_RAM_ENABLE_MASK 0x0A
+#define MBC2_PRIMARY_BANK_MASK 0x0F
+
 typedef enum CartridgeType {
     CART_TYPE_NO_MBC,
     CART_TYPE_MBC1,
@@ -38,7 +48,7 @@ typedef struct Cartridge {
     uint8_t ram_enable;
     uint8_t primary_bank;
     uint8_t secondary_bank;
-    uint8_t mbc1_advanced;
+    uint8_t banking_mode;
 } Cartridge;
 
 Cartridge *create_cartridge(const char *rom_file);

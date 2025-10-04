@@ -1,9 +1,8 @@
 #include "joypad.h"
 
 #include "gb.h"
-#include <stdio.h>
 
-void joypad_init(Joypad *joypad, struct GB *gb) {
+void joypad_init(Joypad *joypad, GB *gb) {
     joypad_reset(joypad);
     joypad->gb = gb;
 }

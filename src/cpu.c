@@ -4,7 +4,6 @@
 #include "util.h"
 #include "opcodes.h"
 #include <stdio.h>
-#include <stdint.h>
 
 extern inline uint8_t get_bit(uint8_t src, uint8_t bit);
 extern inline void set_bit(uint8_t *dest, uint8_t bit, uint8_t val);
