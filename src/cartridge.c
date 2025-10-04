@@ -100,19 +100,33 @@ static uint8_t cartridge_read_mbc1(Cartridge *cart, uint16_t addr) {
         case 0x0000: // fixed ROM bank
         case 0x1000:
         case 0x2000:
-        case 0x3000:
+        case 0x3000: {
+            uint32_t loc = addr;
+            if (cart->banking_mode == 1) loc |= (cart->secondary_bank << 19);
 
+            if (loc < cart->rom_size) val = cart->rom[loc];
             break;
-
+        }
         case 0x4000: // switchable ROM bank
         case 0x5000:
         case 0x6000:
-        case 0x7000:
+        case 0x7000: {
+            uint32_t loc = (addr - CART_ROM_BASE_ADDR) | (max(cart->primary_bank, 0x01) << 14);
+            if (cart->banking_mode == 1) loc |= (cart->secondary_bank << 19);
+            
+            if (loc < cart->rom_size) val = cart->rom[loc];
             break;
-
+        }
         case 0xA000: // switchable RAM bank
-        case 0xB000:
+        case 0xB000: {
+            if (!cart->ram_enable) break;
+
+            uint32_t loc = (addr - CART_RAM_BASE_ADDR);
+            if (cart->banking_mode == 1) loc |= (cart->secondary_bank << 13);
+
+            if (loc < cart->ram_size) val = cart->ram[loc];
             break;
+        }
     }
 
     return val;
@@ -126,20 +140,28 @@ static uint8_t cartridge_read_mbc2(Cartridge *cart, uint16_t addr) {
         case 0x1000:
         case 0x2000:
         case 0x3000:
-            val = cart->rom[addr];
+            if (addr < cart->rom_size) val = cart->rom[addr];
             break;
 
         case 0x4000: // switchable ROM bank
         case 0x5000:
         case 0x6000:
-        case 0x7000:
-            val = cart->rom[(addr - CART_ROM_BASE_ADDR) | (max(cart->primary_bank, 0x01) << 14)];
-            break;
+        case 0x7000: {
+            uint32_t loc = (addr - CART_ROM_BASE_ADDR) | (max(cart->primary_bank, 0x01) << 14);
 
-        case 0xA000: // built-in RAM bank and its 'echoes'
-        case 0xB000:
-            val = cart->ram[(addr - CART_RAM_BASE_ADDR) % 0x0200];
+            if (loc < cart->rom_size) val = cart->rom[loc];
             break;
+        }
+            
+        case 0xA000: // built-in RAM bank and its 'echoes'
+        case 0xB000: {
+            if (!cart->ram_enable) break;
+
+            uint32_t loc = (addr - CART_RAM_BASE_ADDR) % 0x0200;
+
+            if (loc < cart->rom_size) val = cart->ram[loc];
+            break;
+        }       
     }
 
     return val;
@@ -153,16 +175,24 @@ static uint8_t cartridge_read_mbc3(Cartridge *cart, uint16_t addr) {
         case 0x1000:
         case 0x2000:
         case 0x3000:
+            if (addr < cart->rom_size) val = cart->rom[addr];
             break;
 
         case 0x4000: // switchable ROM bank
         case 0x5000:
         case 0x6000:
-        case 0x7000:
+        case 0x7000: {
+            uint32_t loc = (addr - CART_ROM_BASE_ADDR) | (cart->primary_bank << 14);
+            
+            if (loc < cart->rom_size) val = cart->rom[loc];
             break;
-
+        }
+            
         case 0xA000: // switchable RAM bank or RTC register
         case 0xB000:
+            if (cart->secondary_bank <= 0x07 && cart->ram_enable)
+                val = cart->ram[(addr - CART_RAM_BASE_ADDR) | (cart->secondary_bank << 13)];
+            // TODO -> RTC registers
             break;
     }
     
@@ -178,7 +208,7 @@ static void cartridge_write_mbc1(Cartridge *cart, uint16_t addr, uint8_t val) {
     switch (addr & 0xF000) {
         case 0x0000: // RAM enable register
         case 0x1000:
-            cart->ram_enable = val & MBC1_RAM_ENABLE_MASK;
+            cart->ram_enable = val & MBC_RAM_ENABLE_MASK;
             break;
 
         case 0x2000: // primary bank number register (ROM)
@@ -197,12 +227,15 @@ static void cartridge_write_mbc1(Cartridge *cart, uint16_t addr, uint8_t val) {
             break;
 
         case 0xA000: // switchable RAM bank
-        case 0xB000:
-            if (!cart->ram_enable) return;
+        case 0xB000: {
+             if (!cart->ram_enable) break;
 
-            // TODO -> RAM writes
+            uint32_t loc = addr - CART_RAM_BASE_ADDR;
+            if (cart->banking_mode == 1) loc |= (cart->secondary_bank << 13);
 
+            if (loc < cart->ram_size) cart->ram[loc] = val;
             break;
+        } 
     }
 }
 
@@ -213,11 +246,12 @@ static void cartridge_write_mbc2(Cartridge *cart, uint16_t addr, uint8_t val) {
         case 0x2000:
         case 0x3000:
             if (addr & 0x0100) cart->primary_bank = val & MBC2_PRIMARY_BANK_MASK;
-            else cart->ram_enable = val & MBC2_RAM_ENABLE_MASK;
+            else cart->ram_enable = val & MBC_RAM_ENABLE_MASK;
             break;
 
         case 0xA000: // built-in RAM bank and its 'echoes'
         case 0xB000:
+            if (!cart->ram_enable) break;
             cart->ram[(addr - CART_RAM_BASE_ADDR) % 0x0200] = val;
             break;
     }
@@ -227,14 +261,17 @@ static void cartridge_write_mbc3(Cartridge *cart, uint16_t addr, uint8_t val) {
     switch (addr & 0xF000) {
         case 0x0000: // RAM and timer enable register
         case 0x1000:
+            cart->ram_enable = val * MBC_RAM_ENABLE_MASK;
             break;
 
         case 0x2000: // primary bank number register (ROM)
         case 0x3000:
+            cart->primary_bank = val & MBC3_PRIMARY_BANK_MASK;
             break;
 
         case 0x4000: // secondary bank number register (RAM or RTC)
         case 0x5000:
+            cart->secondary_bank = val;
             break;
 
         case 0x6000: // latch clock data register
@@ -243,6 +280,9 @@ static void cartridge_write_mbc3(Cartridge *cart, uint16_t addr, uint8_t val) {
 
         case 0xA000: // switchable RAM bank or RTC
         case 0xB000:
+            if (cart->secondary_bank <= 0x07 && cart->ram_enable)
+                cart->ram[(addr - CART_RAM_BASE_ADDR) | (cart->secondary_bank << 13)] = val;
+            // TODO -> RTC registers
             break;
     }
 }
