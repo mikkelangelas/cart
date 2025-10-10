@@ -5,6 +5,8 @@
 #include "opcodes.h"
 #include <stdio.h>
 
+uint8_t print_debug = 0;
+
 extern inline uint8_t get_bit(uint8_t src, uint8_t bit);
 extern inline void set_bit(uint8_t *dest, uint8_t bit, uint8_t val);
 
@@ -37,7 +39,7 @@ static inline void set_flags_subtraction(CPU *cpu, uint8_t op1, uint8_t op2) {
 }
 
 static inline void set_flags_and(CPU *cpu, uint8_t res) {
-    cpu->f = 0x02 | ((res == 0x00) << CPU_FLAG_Z);
+    cpu->f = 0x20 | ((res == 0x00) << CPU_FLAG_Z);
 }
 
 static inline void set_flags_or_xor(CPU *cpu, uint8_t res) {
@@ -61,9 +63,11 @@ static inline uint8_t evaluate_condition(CPU *cpu, CPUCondition cond) {
 static inline uint8_t pc_read_byte(CPU *cpu) {
     uint8_t byte = mmu_read(&cpu->gb->mmu, cpu->pc++);
 
-    //if (cpu->pc >= 0x0100)
-        //printf("At: %x read: %x\n", cpu->pc-1, byte);
-    //printf("%x fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", cpu->pc-1, byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
+    if (print_debug)
+        printf("%x fetch: %x stat: %x\n", cpu->pc-1, byte, mmu_read(&cpu->gb->mmu, STAT_ADDR));
+        //printf("%x fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", cpu->pc-1, byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
+
+
     return byte; 
 }
 
@@ -714,7 +718,7 @@ void and_a_r8(CPU *cpu, Reg8 reg) {
 
 void and_a_n8(CPU *cpu, uint8_t val) {
     cpu->a &= val;
-    set_flags_and(cpu, val);
+    set_flags_and(cpu, cpu->a);
 }
 
 void or_a_r8(CPU *cpu, Reg8 reg) {

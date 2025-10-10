@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+extern uint8_t print_debug;
+
 Emulator *create_emulator() {
     Emulator *new_emu = (Emulator*)malloc(sizeof(Emulator));
 
@@ -86,6 +88,8 @@ uint8_t cart_run() {
 
 void cart_handle_events(Emulator *emu) {
     if (emu->keys[SDL_SCANCODE_ESCAPE]) emu->should_close = 1;
+
+    if (emu->keys[SDL_SCANCODE_SPACE]) print_debug = ~print_debug;
 
     if (emu->gb == NULL) return;
 
