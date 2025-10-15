@@ -194,7 +194,9 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
     uint8_t wx = mmu_read(&ppu->gb->mmu, WX_ADDR);
     uint8_t wind_y = mmu_read(&ppu->gb->mmu, WY_ADDR) + ppu->current_line;
 
-    if (wx >= GB_SCREEN_H + 7 || wind_y >= GB_SCREEN_W) return;
+    uint8_t wind_bound = GB_SCREEN_W + 7;
+
+    if (wx >= wind_bound || wind_y >= GB_SCREEN_W) return;
 
     uint8_t map_y = wind_y / TILE_SIZE;
     uint8_t tile_y = wind_y % TILE_SIZE;
@@ -202,16 +204,16 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
     uint8_t last_tile_idx = 0;
     uint16_t tile_data = 0;
 
-    for (uint8_t wind_x = wx; wind_x < GB_SCREEN_W; wind_x++) {
+    for (uint8_t wind_x = wx; wind_x < wind_bound; wind_x++) {
         if (wind_x < 7) continue;
 
-        uint8_t map_x = wind_x / TILE_SIZE;
-        uint8_t tile_x = wind_x % TILE_SIZE;
+        uint8_t map_x = (wind_x - wx) / TILE_SIZE;
+        uint8_t tile_x = (wind_x - wx) % TILE_SIZE;
 
         uint8_t tile_idx = mmu_read(&ppu->gb->mmu, map_addr + (map_y * MAP_SIZE_TILES) + map_x);
 
         // prevents refetching tile data for every pixel
-        if (tile_idx != last_tile_idx || wind_x == 0) {
+        if (tile_idx != last_tile_idx || wind_x == wx) {
             last_tile_idx = tile_idx;
             tile_data = fetch_tile_row_data(ppu, tiles_addr, tile_idx, tile_y);
         }
@@ -256,14 +258,14 @@ void ppu_draw_obj_line(PPU *ppu, uint8_t lcdc) {
 
             if (color_idx == 0) continue;
             
-            uint8_t pixel_x = obj_x - 8 + p;
+            uint8_t screen_x = obj_x - 8 + p;
 
-            if (low_priority && fetch_palette_color(ppu, BGP_ADDR, 0) != get_pixel(ppu, pixel_x, ppu->current_line))
+            if (low_priority && fetch_palette_color(ppu, BGP_ADDR, 0) != get_pixel(ppu, screen_x, ppu->current_line))
                 continue;
 
             uint8_t color = fetch_palette_color(ppu, pal_addr, color_idx);
 
-            draw_pixel(ppu, pixel_x, ppu->current_line, color);
+            draw_pixel(ppu, screen_x, ppu->current_line, color);
         }
     }
 }
