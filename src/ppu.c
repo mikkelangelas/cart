@@ -238,13 +238,16 @@ void ppu_draw_obj_line(PPU *ppu, uint8_t lcdc) {
 
         uint8_t obj_attr = mmu_read(&ppu->gb->mmu, obj_loc + OAM_ATTR_OFFSET);
 
-        // TODO -> x and y flips
-
+        // checking the object's attributes
+        uint8_t flipped_x = obj_attr & OAM_ATTR_X_FLIP_MASK;
+        uint8_t flipped_y = obj_attr & OAM_ATTR_Y_FLIP_MASK;
         uint8_t low_priority = obj_attr & OAM_ATTR_PRIORITY_MASK;
         uint16_t pal_addr = (obj_attr & OAM_ATTR_PALETTE_MASK) ? OBP1_ADDR : OBP0_ADDR;
 
         uint8_t obj_y = mmu_read(&ppu->gb->mmu, obj_loc) - 16;
         uint8_t tile_y = (ppu->current_line - obj_y) % 8;
+
+        if (flipped_y) tile_y = 7 - tile_y;
 
         uint8_t tile_idx = mmu_read(&ppu->gb->mmu, obj_loc + OAM_TILE_OFFSET);
 
@@ -256,7 +259,7 @@ void ppu_draw_obj_line(PPU *ppu, uint8_t lcdc) {
         for (uint8_t p = 0; p < 8; p++) {
             if (obj_x + p < 8) continue;
             
-            uint8_t color_idx = get_color_index(tile_data, p);
+            uint8_t color_idx = get_color_index(tile_data, (flipped_x) ? 7 - p : p);
 
             if (color_idx == 0) continue;
             
