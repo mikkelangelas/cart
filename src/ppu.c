@@ -193,7 +193,8 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
 
     uint8_t wx = mmu_read(&ppu->gb->mmu, WX_ADDR);
     uint8_t wy = mmu_read(&ppu->gb->mmu, WY_ADDR);
-    uint8_t wind_y = ppu->current_line - mmu_read(&ppu->gb->mmu, WY_ADDR);
+
+    uint8_t wind_y = ppu->current_line - wy;
 
     if (wx >= GB_SCREEN_W + 7 || wy >= GB_SCREEN_H) return;
 
@@ -214,7 +215,7 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
         uint8_t tile_idx = mmu_read(&ppu->gb->mmu, map_addr + (map_y * MAP_SIZE_TILES) + map_x);
 
         // prevents refetching tile data for every pixel
-        if (tile_idx != last_tile_idx || wind_x == wx) {
+        if (tile_idx != last_tile_idx || wind_x == 0) {
             last_tile_idx = tile_idx;
             tile_data = fetch_tile_row_data(ppu, tiles_addr, tile_idx, tile_y);
         }
