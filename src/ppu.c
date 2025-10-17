@@ -162,14 +162,14 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
     // no need to use % 256 for wrapping scrolled_y around 
     // because it's 8-bit so it will naturally happen
     // in case an overflow occurs
-    uint8_t map_y = scrolled_y / TILE_SIZE; 
+    uint8_t map_y = scrolled_y / TILE_SIZE;
     uint8_t tile_y = scrolled_y % TILE_SIZE;
 
     uint8_t last_tile_idx = 0;
     uint16_t tile_data = 0;
 
     for (uint8_t screen_x = 0; screen_x < GB_SCREEN_W; screen_x++) {
-        uint8_t scrolled_x = scx + screen_x; 
+        uint8_t scrolled_x = screen_x + scx; 
         uint8_t map_x = scrolled_x / TILE_SIZE;
         uint8_t tile_x = scrolled_x % TILE_SIZE;
 
@@ -192,11 +192,10 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
     uint16_t map_addr = (lcdc & LCDC_WIND_TILE_MAP_MASK) ? 0x9C00 : 0x9800;
 
     uint8_t wx = mmu_read(&ppu->gb->mmu, WX_ADDR);
-    uint8_t wind_y = mmu_read(&ppu->gb->mmu, WY_ADDR) + ppu->current_line;
+    uint8_t wy = mmu_read(&ppu->gb->mmu, WY_ADDR);
+    uint8_t wind_y = ppu->current_line - mmu_read(&ppu->gb->mmu, WY_ADDR);
 
-    uint8_t wind_bound = GB_SCREEN_W + 7;
-
-    if (wx >= wind_bound || wind_y >= GB_SCREEN_W) return;
+    if (wx >= GB_SCREEN_W + 7 || wy >= GB_SCREEN_H) return;
 
     uint8_t map_y = wind_y / TILE_SIZE;
     uint8_t tile_y = wind_y % TILE_SIZE;
@@ -204,11 +203,13 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
     uint8_t last_tile_idx = 0;
     uint16_t tile_data = 0;
 
-    for (uint8_t wind_x = wx; wind_x < wind_bound; wind_x++) {
-        if (wind_x < 7) continue;
+    for (uint8_t wind_x = 0; wind_x < GB_SCREEN_W; wind_x++) {
+        if (wx + wind_x < 7) continue;
 
-        uint8_t map_x = (wind_x - wx) / TILE_SIZE;
-        uint8_t tile_x = (wind_x - wx) % TILE_SIZE;
+        uint8_t screen_x = wx + wind_x - 7;
+
+        uint8_t map_x = wind_x / TILE_SIZE;
+        uint8_t tile_x = wind_x % TILE_SIZE;
 
         uint8_t tile_idx = mmu_read(&ppu->gb->mmu, map_addr + (map_y * MAP_SIZE_TILES) + map_x);
 
@@ -220,7 +221,7 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
 
         uint8_t color = fetch_palette_color(ppu, BGP_ADDR, get_color_index(tile_data, tile_x));
 
-        draw_pixel(ppu, wind_x - 7, ppu->current_line, color);
+        draw_pixel(ppu, wind_x, ppu->current_line, color);
     }
 }
 
