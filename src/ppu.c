@@ -222,7 +222,7 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
 
         uint8_t color = fetch_palette_color(ppu, BGP_ADDR, get_color_index(tile_data, tile_x));
 
-        draw_pixel(ppu, wind_x, ppu->current_line, color);
+        draw_pixel(ppu, screen_x, ppu->current_line, color);
     }
 }
 
