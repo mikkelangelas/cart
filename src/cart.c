@@ -48,7 +48,7 @@ Emulator *create_emulator() {
 
     new_emu->should_close = 0;
 
-    new_emu->gb = create_gb("test2.gb");
+    new_emu->gb = create_gb("test.gb");
 
     return new_emu;
 }
