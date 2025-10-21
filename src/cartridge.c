@@ -111,7 +111,7 @@ static uint8_t cartridge_read_mbc1(Cartridge *cart, uint16_t addr) {
         case 0x5000:
         case 0x6000:
         case 0x7000: {
-            uint32_t loc = (addr - CART_ROM_BASE_ADDR) | (max(cart->primary_bank, 0x01) << 14);
+            uint32_t loc = (addr - CART_ROM_BASE_ADDR) | (MAX(cart->primary_bank, 0x01) << 14);
             if (cart->banking_mode == 1) loc |= (cart->secondary_bank << 19);
             
             if (loc < cart->rom_size) val = cart->rom[loc];
@@ -147,7 +147,7 @@ static uint8_t cartridge_read_mbc2(Cartridge *cart, uint16_t addr) {
         case 0x5000:
         case 0x6000:
         case 0x7000: {
-            uint32_t loc = (addr - CART_ROM_BASE_ADDR) | (max(cart->primary_bank, 0x01) << 14);
+            uint32_t loc = (addr - CART_ROM_BASE_ADDR) | (MAX(cart->primary_bank, 0x01) << 14);
 
             if (loc < cart->rom_size) val = cart->rom[loc];
             break;

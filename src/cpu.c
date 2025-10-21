@@ -64,7 +64,20 @@ static inline uint8_t pc_read_byte(CPU *cpu) {
     uint8_t byte = mmu_read(&cpu->gb->mmu, cpu->pc++);
 
     if (print_debug)
-        printf("%x fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", cpu->pc-1, byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
+        printf(
+                "%x fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n",
+                cpu->pc-1,
+                byte,
+                cpu->a,
+                cpu->b, 
+                cpu->c,
+                cpu->d,
+                cpu->e,
+                cpu->h,
+                cpu->l,
+                cpu->sp,
+                cpu->f
+        );
 
 
     return byte; 
