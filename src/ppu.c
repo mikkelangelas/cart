@@ -3,11 +3,11 @@
 #include "util.h"
 
 static inline void horizontal_rectrace(PPU *ppu) {
-    mmu_write(&ppu->gb->mmu, LY_ADDR, ++ppu->current_line);
+    ppu->gb->io[LY_ADDR_RELATIVE] = ++ppu->current_line;
 }
 
 static inline void vertical_retrace(PPU *ppu) {
-    mmu_write(&ppu->gb->mmu, LY_ADDR, ppu->current_line = 0);
+    ppu->gb->io[LY_ADDR_RELATIVE] = ppu->current_line= 0;
 }
 
 static uint16_t fetch_tile_row_data(PPU *ppu, uint16_t addr, uint8_t idx, uint8_t y) {
@@ -40,7 +40,7 @@ static inline uint8_t get_color_index(uint16_t row_data, uint8_t tile_x) {
 }
 
 static uint8_t fetch_palette_color(PPU *ppu, uint16_t pal_addr, uint8_t color_idx) {
-    uint8_t palette = mmu_read(&ppu->gb->mmu, pal_addr);
+    uint8_t palette = ppu->gb->io[pal_addr];
 
     return (palette >> (color_idx * 2)) & 0x03;
 }
@@ -68,7 +68,7 @@ void ppu_step(PPU *ppu, uint8_t cycles) {
     // Processing dot by dot should yield the most accurate
     // timing results, but does it really matter in
     // an emulator?
-    uint8_t lcdc = mmu_read(&ppu->gb->mmu, LCDC_ADDR);
+    uint8_t lcdc = ppu->gb->io[LCDC_ADDR_RELATIVE];
 
     if ((lcdc & LCDC_LCD_PPU_ENABLE_MASK) == 0) return;
 
@@ -155,9 +155,9 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
     uint16_t tiles_addr = (lcdc & LCDC_BG_WIND_TILES_MASK) ? 0x8000 : 0x8800;
     uint16_t map_addr = (lcdc & LCDC_BG_TILE_MAP_MASK) ? 0x9C00 : 0x9800;
 
-    uint8_t scx = mmu_read(&ppu->gb->mmu, SCX_ADDR);
+    uint8_t scx = ppu->gb->io[SCX_ADDR_RELATIVE];
 
-    uint8_t scrolled_y = mmu_read(&ppu->gb->mmu, SCY_ADDR) + ppu->current_line;
+    uint8_t scrolled_y = ppu->gb->io[SCY_ADDR_RELATIVE] + ppu->current_line;
 
     // no need to use % 256 for wrapping scrolled_y around 
     // because it's 8-bit so it will naturally happen
@@ -181,7 +181,7 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
             tile_data = fetch_tile_row_data(ppu, tiles_addr, tile_idx, tile_y);
         }
 
-        uint8_t color = fetch_palette_color(ppu, BGP_ADDR, get_color_index(tile_data, tile_x));
+        uint8_t color = fetch_palette_color(ppu, BGP_ADDR_RELATIVE, get_color_index(tile_data, tile_x));
 
         draw_pixel(ppu, screen_x, ppu->current_line, color);
     }
@@ -191,8 +191,8 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
     uint16_t tiles_addr = (lcdc & LCDC_BG_WIND_TILES_MASK) ? 0x8000 : 0x8800;
     uint16_t map_addr = (lcdc & LCDC_WIND_TILE_MAP_MASK) ? 0x9C00 : 0x9800;
 
-    uint8_t wx = mmu_read(&ppu->gb->mmu, WX_ADDR);
-    uint8_t wy = mmu_read(&ppu->gb->mmu, WY_ADDR);
+    uint8_t wx = ppu->gb->io[WX_ADDR_RELATIVE];
+    uint8_t wy = ppu->gb->io[WY_ADDR_RELATIVE];
 
     uint8_t wind_y = ppu->current_line - wy;
 
@@ -220,9 +220,9 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
             tile_data = fetch_tile_row_data(ppu, tiles_addr, tile_idx, tile_y);
         }
 
-        uint8_t color = fetch_palette_color(ppu, BGP_ADDR, get_color_index(tile_data, tile_x));
+        uint8_t color = fetch_palette_color(ppu, BGP_ADDR_RELATIVE, get_color_index(tile_data, tile_x));
 
-        draw_pixel(ppu, wind_x, ppu->current_line, color);
+        draw_pixel(ppu, screen_x, ppu->current_line, color);
     }
 }
 
@@ -242,7 +242,7 @@ void ppu_draw_obj_line(PPU *ppu, uint8_t lcdc) {
         uint8_t flipped_x = obj_attr & OAM_ATTR_X_FLIP_MASK;
         uint8_t flipped_y = obj_attr & OAM_ATTR_Y_FLIP_MASK;
         uint8_t low_priority = obj_attr & OAM_ATTR_PRIORITY_MASK;
-        uint16_t pal_addr = (obj_attr & OAM_ATTR_PALETTE_MASK) ? OBP1_ADDR : OBP0_ADDR;
+        uint16_t pal_addr = (obj_attr & OAM_ATTR_PALETTE_MASK) ? OBP1_ADDR_RELATIVE : OBP0_ADDR_RELATIVE;
 
         uint8_t obj_y = mmu_read(&ppu->gb->mmu, obj_loc) - 16;
         uint8_t tile_y = (ppu->current_line - obj_y) % 8;
@@ -257,16 +257,16 @@ void ppu_draw_obj_line(PPU *ppu, uint8_t lcdc) {
         uint16_t tile_data = fetch_tile_row_data(ppu, 0x8000, tile_idx, tile_y);
 
         for (uint8_t p = 0; p < 8; p++) {
-            if (obj_x + p < 8) continue;
+            if (obj_x + p < 8) continue; // pixel outside the screen
             
             uint8_t color_idx = get_color_index(tile_data, (flipped_x) ? 7 - p : p);
 
-            if (color_idx == 0) continue;
+            if (color_idx == 0) continue; // pixel is transparent
             
             uint8_t screen_x = obj_x - 8 + p;
 
-            if (low_priority && fetch_palette_color(ppu, BGP_ADDR, 0) != get_pixel(ppu, screen_x, ppu->current_line))
-                continue;
+            if (low_priority && fetch_palette_color(ppu, BGP_ADDR_RELATIVE, 0) != get_pixel(ppu, screen_x, ppu->current_line))
+                continue; // object has low priority (bg and window colors indices 1-3 are drawn over)
 
             uint8_t color = fetch_palette_color(ppu, pal_addr, color_idx);
 
@@ -276,9 +276,9 @@ void ppu_draw_obj_line(PPU *ppu, uint8_t lcdc) {
 }
 
 void ppu_update_stat(PPU *ppu) {
-    uint8_t stat = mmu_read(&ppu->gb->mmu, STAT_ADDR);
+    uint8_t stat = ppu->gb->io[STAT_ADDR_RELATIVE];
 
-    set_bit(&stat, 2, ppu->current_line == mmu_read(&ppu->gb->mmu, LYC_ADDR));
+    set_bit(&stat, 2, ppu->current_line == ppu->gb->io[LYC_ADDR_RELATIVE]);
 
     if (ppu->current_dot == 1) {
         stat = (stat & 0xFC) | ppu->mode;
@@ -291,5 +291,5 @@ void ppu_update_stat(PPU *ppu) {
 
     }
 
-    mmu_write(&ppu->gb->mmu, STAT_ADDR, stat);
+    ppu->gb->io[STAT_ADDR_RELATIVE] = stat;
 }

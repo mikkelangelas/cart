@@ -64,8 +64,7 @@ static inline uint8_t pc_read_byte(CPU *cpu) {
     uint8_t byte = mmu_read(&cpu->gb->mmu, cpu->pc++);
 
     if (print_debug)
-        printf("%x fetch: %x stat: %x\n", cpu->pc-1, byte, mmu_read(&cpu->gb->mmu, STAT_ADDR));
-        //printf("%x fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", cpu->pc-1, byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
+        printf("%x fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n", cpu->pc-1, byte, cpu->a, cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->sp, cpu->f);
 
 
     return byte; 
@@ -360,8 +359,8 @@ uint8_t cpu_execute_prefixed(CPU *cpu, uint8_t opcode) {
 uint8_t cpu_handle_interrupts(CPU *cpu) {
     if (cpu->ime == 0) return 0;
 
-    uint8_t int_flags = mmu_read(&cpu->gb->mmu, IF_ADDR);
-    uint8_t pending = mmu_read(&cpu->gb->mmu, IE_ADDR) & int_flags;
+    uint8_t int_flags = cpu->gb->io[IF_ADDR_RELATIVE];
+    uint8_t pending = cpu->gb->ie & int_flags;
 
     if (pending == 0) return 0;
 
@@ -369,11 +368,15 @@ uint8_t cpu_handle_interrupts(CPU *cpu) {
 
     for (uint8_t i = 0; i < 5; i++) {
         if (get_bit(pending, i) == 1) {
-            cpu->ime = 0;
+            cpu->ime = 0; // disable all interrupts
+
+            // reset handled interrupt flag
             set_bit(&int_flags, i, 0);
-            mmu_write(&cpu->gb->mmu, IF_ADDR, int_flags);
+            cpu->gb->io[IF_ADDR_RELATIVE] = int_flags; 
+
+            // call interrupt handler
             push_stack(cpu, cpu->pc);
-            cpu->pc = 0x0040 + (i << 3);
+            cpu->pc = 0x0040 + (i << 3); 
         }
     }
 

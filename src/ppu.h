@@ -25,6 +25,21 @@
 #define WY_ADDR   0xFF4A
 #define WX_ADDR   0xFF4B
 
+// addresses relative to the start of IO memory
+#define LCDC_ADDR_RELATIVE 0x0040
+#define STAT_ADDR_RELATIVE 0x0041
+#define SCY_ADDR_RELATIVE  0x0042
+#define SCX_ADDR_RELATIVE  0x0043
+#define LY_ADDR_RELATIVE   0x0044
+#define LYC_ADDR_RELATIVE  0x0045
+
+#define BGP_ADDR_RELATIVE  0x0047
+#define OBP0_ADDR_RELATIVE 0x0048
+#define OBP1_ADDR_RELATIVE 0x0049
+
+#define WY_ADDR_RELATIVE   0x004A
+#define WX_ADDR_RELATIVE   0x004B
+
 // it's better to test a bit with an AND
 #define LCDC_BG_WIND_ENABLE_MASK 0x01
 #define LCDC_OBJ_ENABLE_MASK     0x02

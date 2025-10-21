@@ -30,6 +30,8 @@
 #define IF_ADDR 0xFF0F
 #define IE_ADDR 0xFFFF
 
+#define IF_ADDR_RELATIVE 0x000F
+
 typedef enum Interrupt {
     INTERRUPT_VBLANK = 0,
     INTERRUPT_STAT   = 1,
