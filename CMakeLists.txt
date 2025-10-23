@@ -11,6 +11,7 @@ add_executable(cart
     src/ppu.c
     src/cartridge.c
     src/joypad.c
+    src/timer.c
     src/util.c
 )
 

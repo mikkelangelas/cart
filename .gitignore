@@ -12,3 +12,6 @@ build/
 
 # third-party dependencies
 third-party/
+
+# VSCode launch and tasks
+.vscode/

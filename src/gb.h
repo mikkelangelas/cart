@@ -7,6 +7,7 @@
 #include "mmu.h"
 #include "ppu.h"
 #include "joypad.h"
+#include "timer.h"
 
 #include "cartridge.h"
 
@@ -46,6 +47,7 @@ typedef struct GB {
     MMU mmu;
     PPU ppu;
     Joypad joypad;
+    Timer timer;
 
     uint8_t framebuffer[GB_SCREEN_W * GB_SCREEN_H];
     uint8_t frame_ready;

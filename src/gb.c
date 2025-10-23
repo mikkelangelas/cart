@@ -17,6 +17,7 @@ GB *create_gb(const char *rom_file) {
     mmu_init(&new_gb->mmu, new_gb);
     ppu_init(&new_gb->ppu, new_gb);
     joypad_init(&new_gb->joypad, new_gb);
+    timer_init(&new_gb->timer, new_gb);
 
     memset(new_gb->framebuffer, 0x03, GB_SCREEN_W * GB_SCREEN_H);
     new_gb->frame_ready = 0;
@@ -41,6 +42,7 @@ void destroy_gb(GB *gb) {
 void gb_step(GB *gb) {
     uint8_t cpu_cycles = cpu_step(&gb->cpu);
     ppu_step(&gb->ppu, cpu_cycles);
+    timer_step(&gb->timer, cpu_cycles);
 }
 
 void gb_interrupt(GB *gb, Interrupt intr) {

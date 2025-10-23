@@ -22,9 +22,12 @@ typedef enum TimerClock {
 } TimerClock;
 
 typedef struct Timer {
-    uint8_t cycle_counter;
+    uint8_t timer_counter;
+    uint8_t divider_counter;
     struct GB *gb;
 } Timer;
+
+void timer_init(Timer *timer, struct GB *gb);
 
 void timer_step(Timer *timer, uint8_t cycles);
 
