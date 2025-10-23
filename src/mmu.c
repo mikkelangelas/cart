@@ -94,7 +94,6 @@ void mmu_write(MMU *mmu, uint16_t addr, uint8_t val) {
             else if (addr <= 0xFF7F) {
                 mmu->gb->io[addr - IO_BASE_ADDR] = val;
 
-
                 if (addr == JOYP_ADDR) joypad_update(&mmu->gb->joypad);
                 else if (addr == DIV_ADDR) timer_div_reset(&mmu->gb->timer);
                 else if (addr == DMA_ADDR) mmu_dma_transfer(mmu, val);

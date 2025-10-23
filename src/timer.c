@@ -44,13 +44,14 @@ void timer_step(Timer *timer, uint8_t cycles) {
 
         if (timer->timer_counter == get_clock_inc_cycles(tac & TAC_CLOCK_SELECT_MASK)) {
             if (tima == 0xFF) {
-                tima = timer->gb->io[TMA_ADDR_RELATIVE];;
+                tima = timer->gb->io[TMA_ADDR_RELATIVE];
                 gb_interrupt(timer->gb, INTERRUPT_TIMER);
             }
             else
                 tima++;
 
             timer->gb->io[TIMA_ADDR_RELATIVE] = tima;
+            timer->timer_counter = 0;
         }
 
         
