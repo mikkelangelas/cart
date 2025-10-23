@@ -56,3 +56,7 @@ void timer_step(Timer *timer, uint8_t cycles) {
         
     }
 }
+
+void timer_div_reset(Timer *timer) {
+    timer->gb->io[DIV_ADDR_RELATIVE] = 0x00;
+}

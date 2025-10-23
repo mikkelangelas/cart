@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #define DIV_INC_CYCLES 64
+#define DIV_ADDR 0xFF04
 
 // addresses relative to the start of IO memory
 #define DIV_ADDR_RELATIVE 0x0004
@@ -30,5 +31,7 @@ typedef struct Timer {
 void timer_init(Timer *timer, struct GB *gb);
 
 void timer_step(Timer *timer, uint8_t cycles);
+
+void timer_div_reset(Timer *timer);
 
 #endif
