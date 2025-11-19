@@ -87,7 +87,7 @@ uint8_t cart_run() {
 
         if (emulator->gb == NULL) continue;
 
-        uint8_t elapsed = gb_step(emulator->gb);
+        gb_step(emulator->gb);
 
         if (emulator->gb->frame_ready == 1) {
             cart_render(emulator);
@@ -95,7 +95,7 @@ uint8_t cart_run() {
             current_frame_time = SDL_GetTicks();
 
             uint32_t frame_delay = current_frame_time - last_frame_time;
-            
+
             last_frame_time = current_frame_time;
             
             if (frame_delay < MS_PER_FRAME) SDL_Delay(MS_PER_FRAME - frame_delay);
