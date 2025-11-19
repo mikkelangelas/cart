@@ -94,11 +94,11 @@ uint8_t cart_run() {
 
             current_frame_time = SDL_GetTicks();
 
-            uint32_t delay = current_frame_time - last_frame_time;
-        
-            if (delay < MS_PER_FRAME) SDL_Delay(MS_PER_FRAME - delay);
-
+            uint32_t frame_delay = current_frame_time - last_frame_time;
+            
             last_frame_time = current_frame_time;
+            
+            if (frame_delay < MS_PER_FRAME) SDL_Delay(MS_PER_FRAME - frame_delay);
         }
 
     }
