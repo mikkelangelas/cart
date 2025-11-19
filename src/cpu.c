@@ -63,7 +63,7 @@ static inline uint8_t evaluate_condition(CPU *cpu, CPUCondition cond) {
 static inline uint8_t pc_read_byte(CPU *cpu) {
     uint8_t byte = mmu_read(&cpu->gb->mmu, cpu->pc++);
 
-    if (print_debug)
+    if (0)
         printf(
                 "%x fetch byte: %x a: %x b: %x c: %x d: %x e: %x h: %x l: %x sp: %x flags: %x\n",
                 cpu->pc-1,

@@ -2,6 +2,10 @@
 #include "gb.h"
 #include "util.h"
 
+#include <stdio.h>
+
+extern uint8_t print_debug;
+
 static inline void horizontal_rectrace(PPU *ppu) {
     ppu->gb->io[LY_ADDR_RELATIVE] = ++ppu->current_line;
 }
@@ -155,6 +159,8 @@ void ppu_draw_bg_line(PPU *ppu, uint8_t lcdc) {
     uint16_t tiles_addr = (lcdc & LCDC_BG_WIND_TILES_MASK) ? 0x8000 : 0x8800;
     uint16_t map_addr = (lcdc & LCDC_BG_TILE_MAP_MASK) ? 0x9C00 : 0x9800;
 
+    //printf("bg tiles: %x\n", tiles_addr);
+
     uint8_t scx = ppu->gb->io[SCX_ADDR_RELATIVE];
 
     uint8_t scrolled_y = ppu->gb->io[SCY_ADDR_RELATIVE] + ppu->current_line;
@@ -194,6 +200,8 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
     uint8_t wx = ppu->gb->io[WX_ADDR_RELATIVE];
     uint8_t wy = ppu->gb->io[WY_ADDR_RELATIVE];
 
+    if (ppu->current_line < wy) return;
+
     uint8_t wind_y = ppu->current_line - wy;
 
     if (wx >= GB_SCREEN_W + 7 || wy >= GB_SCREEN_H) return;
@@ -205,7 +213,7 @@ void ppu_draw_wind_line(PPU *ppu, uint8_t lcdc) {
     uint16_t tile_data = 0;
 
     for (uint8_t wind_x = 0; wind_x < GB_SCREEN_W; wind_x++) {
-        if (wx + wind_x < 7) continue;
+        if (wx + wind_x <  7) continue;
 
         uint8_t screen_x = wx + wind_x - 7;
 

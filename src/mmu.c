@@ -3,8 +3,6 @@
 #include "gb.h"
 #include "bootrom.h"
 
-#include <stdio.h>
-
 void mmu_init(MMU *mmu, struct GB *gb) {
     *mmu = (MMU){
         .bootrom_mapped = 1,
