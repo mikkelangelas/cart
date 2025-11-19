@@ -1,8 +1,12 @@
 # 🕹️ cart
 Simple Gameboy emulator written for fun. After implementing all DMG functionality I plan to also add Gameboy Color emulation.
 
-## Keymap
-
+## ⌨️ Keymap
+- Z - B
+- X - A
+- C - Start
+- V - Select
+- Arrows - D-Pad
 
 ## 🔧 Building
 ### Prerequisites
