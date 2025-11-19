@@ -40,11 +40,13 @@ void destroy_gb(GB *gb) {
     free(gb);
 }
 
-void gb_step(GB *gb) {
+uint8_t gb_step(GB *gb) {
     uint8_t cpu_cycles = cpu_step(&gb->cpu);
     ppu_step(&gb->ppu, cpu_cycles);
     apu_step(&gb->apu, cpu_cycles);
     timer_step(&gb->timer, cpu_cycles);
+
+    return cpu_cycles;
 }
 
 void gb_interrupt(GB *gb, Interrupt intr) {

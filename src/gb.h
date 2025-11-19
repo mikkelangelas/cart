@@ -69,7 +69,7 @@ GB *create_gb(const char *rom_file);
 
 void destroy_gb(GB *gb);
 
-void gb_step(GB *gb);
+uint8_t gb_step(GB *gb);
 
 void gb_interrupt(GB *gb, Interrupt intr);
 

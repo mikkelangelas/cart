@@ -5,6 +5,8 @@
 
 extern uint8_t print_debug;
 
+#define MS_PER_FRAME 17 // while running 59 FPS
+
 Emulator *create_emulator() {
     Emulator *new_emu = (Emulator*)malloc(sizeof(Emulator));
 
@@ -73,6 +75,11 @@ uint8_t cart_run() {
     Emulator *emulator = create_emulator();
 
     if (emulator == NULL) return 0;
+
+    uint64_t current_frame_time = 0;
+    uint64_t last_frame_time = 0;
+
+    uint32_t counter = 0;
     
     // Main event loop
     while (emulator->should_close == 0) {
@@ -80,9 +87,20 @@ uint8_t cart_run() {
 
         if (emulator->gb == NULL) continue;
 
-        gb_step(emulator->gb);
+        uint8_t elapsed = gb_step(emulator->gb);
 
-        if (emulator->gb->frame_ready == 1) cart_render(emulator);
+        if (emulator->gb->frame_ready == 1) {
+            cart_render(emulator);
+
+            current_frame_time = SDL_GetTicks();
+
+            uint32_t delay = current_frame_time - last_frame_time;
+        
+            if (delay < MS_PER_FRAME) SDL_Delay(MS_PER_FRAME - delay);
+
+            last_frame_time = current_frame_time;
+        }
+
     }
 
     destroy_emulator(emulator);
