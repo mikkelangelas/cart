@@ -54,6 +54,7 @@ typedef struct CPU {
     uint16_t sp;
 
     uint8_t ime;
+    uint8_t ime_set_pending;
     uint8_t halted;
 
     struct GB *gb;

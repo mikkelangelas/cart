@@ -3,6 +3,8 @@
 #include "gb.h"
 #include "bootrom.h"
 
+#include <stdio.h>
+
 void mmu_init(MMU *mmu, struct GB *gb) {
     *mmu = (MMU){
         .bootrom_mapped = 1,
@@ -16,7 +18,7 @@ uint8_t mmu_read(MMU *mmu, uint16_t addr) {
     switch (addr & 0xF000) {
         case 0x0000:
             if (mmu->bootrom_mapped == 1 && addr < 0x0100) {
-               val = DMG_BOOTROM[addr];
+                val = DMG_BOOTROM[addr];
                 break;
             }
         case 0x1000: // fallthrough if not reading from bootrom
@@ -110,7 +112,7 @@ void mmu_dma_transfer(MMU *mmu, uint8_t start) {
     if (start > 0xDF) return;
 
     uint16_t src = start << 8;
-
+    //printf("transfer src: %x\n", src);
     for (uint8_t b = 0; b < OAM_SIZE; b++)
         mmu->gb->oam[b] = mmu_read(mmu, src + b);
 }

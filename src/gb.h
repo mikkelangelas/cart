@@ -6,6 +6,7 @@
 #include "cpu.h"
 #include "mmu.h"
 #include "ppu.h"
+#include "apu.h"
 #include "joypad.h"
 #include "timer.h"
 
@@ -46,6 +47,7 @@ typedef struct GB {
     CPU cpu; 
     MMU mmu;
     PPU ppu;
+    APU apu;
     Joypad joypad;
     Timer timer;
 

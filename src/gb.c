@@ -16,6 +16,7 @@ GB *create_gb(const char *rom_file) {
     cpu_init(&new_gb->cpu, new_gb);
     mmu_init(&new_gb->mmu, new_gb);
     ppu_init(&new_gb->ppu, new_gb);
+    apu_init(&new_gb->apu, new_gb);
     joypad_init(&new_gb->joypad, new_gb);
     timer_init(&new_gb->timer, new_gb);
 
@@ -42,6 +43,7 @@ void destroy_gb(GB *gb) {
 void gb_step(GB *gb) {
     uint8_t cpu_cycles = cpu_step(&gb->cpu);
     ppu_step(&gb->ppu, cpu_cycles);
+    apu_step(&gb->apu, cpu_cycles);
     timer_step(&gb->timer, cpu_cycles);
 }
 

@@ -1,6 +1,9 @@
 # 🕹️ cart
 Simple Gameboy emulator written for fun. After implementing all DMG functionality I plan to also add Gameboy Color emulation.
 
+## Keymap
+
+
 ## 🔧 Building
 ### Prerequisites
 - C compiler (any)

@@ -44,11 +44,13 @@ Emulator *create_emulator() {
         return NULL;
     }
 
+    // TODO -> AudioStream creation
+
     new_emu->keys = SDL_GetKeyboardState(NULL);
 
     new_emu->should_close = 0;
 
-    new_emu->gb = create_gb("test2.gb");
+    new_emu->gb = create_gb("test3.gb");
 
     return new_emu;
 }
@@ -56,6 +58,7 @@ Emulator *create_emulator() {
 void destroy_emulator(Emulator *emu) {
     if (emu == NULL) return;
 
+    SDL_DestroyAudioStream(emu->audio_stream);
     SDL_DestroyTexture(emu->screen_texture);
     SDL_DestroyRenderer(emu->renderer);
     SDL_DestroyWindow(emu->window);

@@ -9,6 +9,7 @@ add_executable(cart
     src/cpu.c
     src/mmu.c
     src/ppu.c
+    src/apu.c
     src/cartridge.c
     src/joypad.c
     src/timer.c

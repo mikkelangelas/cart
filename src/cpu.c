@@ -120,6 +120,11 @@ uint8_t cpu_step(CPU *cpu) {
         ? cpu_execute(cpu, opcode)
         : cpu_execute_prefixed(cpu, pc_read_byte(cpu));
 
+    if (cpu->ime_set_pending > 0) {
+        if (cpu->ime_set_pending == 1) cpu->ime = 1;
+        cpu->ime_set_pending--;
+    }
+
     return cycles;
 }
 
@@ -815,9 +820,7 @@ void di(CPU *cpu) {
 }
 
 void ei(CPU *cpu) {
-    // ime should be set AFTER THE NEXT INSTRUCTION,
-    // but this should do for now
-    cpu->ime = 1;
+    cpu->ime_set_pending = 2;
 }
 
 void halt(CPU *cpu) {

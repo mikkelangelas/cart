@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-#define MIN(a, b) ((a) < (b)) ? (a) : (b)
-#define MAX(a, b) ((a) > (b)) ? (a) : (b)
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 inline void set_bit(uint8_t *dest, uint8_t bit, uint8_t val) {
     if (val == 0) *dest &= ~(0x01 << bit);

@@ -10,9 +10,10 @@ typedef struct Emulator {
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *screen_texture;
+    SDL_AudioStream *audio_stream;
     SDL_Event event;
     const bool *keys;
-
+    
     uint8_t should_close;
 
     GB *gb;
