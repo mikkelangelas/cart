@@ -17,4 +17,6 @@ inline uint8_t get_bit(uint8_t src, uint8_t bit) {
 
 uint8_t *read_file_to_array(const char *filename, uint8_t is_binary);
 
+void write_bytes_to_file(const char *filename, const uint8_t *data, size_t len);
+
 #endif

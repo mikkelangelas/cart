@@ -34,3 +34,15 @@ uint8_t *read_file_to_array(const char *filename, uint8_t is_binary) {
     return buf;
 }
 
+void write_bytes_to_file(const char *filename, const uint8_t *data, size_t len) {
+    FILE *file = fopen(filename, "wb");
+
+    if (file == NULL) {
+        fprintf(stderr, "save_bytes_to_file(): Failed to open file: %s", filename);
+        return;
+    }
+
+    fwrite(data, 1, len, file);
+
+    fclose(file);
+}

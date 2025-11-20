@@ -3,9 +3,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "util.h"
+
 extern uint8_t print_debug;
 
 #define MS_PER_FRAME 17 // while running 59 FPS
+
+static void cart_save_game(Emulator *emu) {
+    if (emu->gb->cartridge->ram_size > 0) {
+        write_bytes_to_file("saved_state.bin", emu->gb->cartridge->ram, emu->gb->cartridge->ram_size);
+    }
+}
 
 Emulator *create_emulator() {
     Emulator *new_emu = (Emulator*)malloc(sizeof(Emulator));
@@ -60,7 +68,7 @@ Emulator *create_emulator() {
 void destroy_emulator(Emulator *emu) {
     if (emu == NULL) return;
 
-    SDL_DestroyAudioStream(emu->audio_stream);
+    //SDL_DestroyAudioStream(emu->audio_stream);
     SDL_DestroyTexture(emu->screen_texture);
     SDL_DestroyRenderer(emu->renderer);
     SDL_DestroyWindow(emu->window);
@@ -124,6 +132,8 @@ void cart_handle_events(Emulator *emu) {
     if (emu->keys[SDL_SCANCODE_LEFT]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_LEFT);
     if (emu->keys[SDL_SCANCODE_UP]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_UP);
     if (emu->keys[SDL_SCANCODE_DOWN]) joypad_press(&emu->gb->joypad, JOYPAD_BUTTON_DOWN);
+
+    if (emu->keys[SDL_SCANCODE_LCTRL] && emu->keys[SDL_SCANCODE_S]) cart_save_game(emu);
 }
 
 void cart_render(Emulator *emu) {
